@@ -6,10 +6,10 @@ description: MUST invoke this first, before responding to anything else, at the 
 # LaminDB Session Tracking (Claude Code only)
 
 ## Concepts
-- **Transform**: fixed and shared — key is always `__claudecode__`, one for the whole project, not per-task. Create it only if it doesn't exist yet; otherwise reuse it.
-- **Run**: this session — a new Run under `__claudecode__` every single session, regardless of what the task is.
-- **run.report**: rendered HTML of the transcript, saved as an Artifact and linked to the Run.
-- **Artifact**: any file you produce, linked to the Run.
+- **Transform**: code, not data. `__claudecode__` is the one fixed Transform for the whole project representing the chat session itself. **Any script you write and execute this session (`.py`/`.ipynb`/`.R`/`.Rmd`/`.qmd`) is its own separate Transform** — never save a script as a plain Artifact. Getting this backwards destroys the lineage from script to the data it produced, which is the entire point of LaminDB.
+- **Run**: an execution. The session gets one Run of `__claudecode__`. Each script you actually run gets its own Run of its own Transform, linked back to the session's Run via `initiated_by_run` — that link is what shows "this script execution happened inside this chat session."
+- **run.report**: rendered HTML of the transcript, saved as an Artifact and linked to the session's Run.
+- **Artifact**: data only — output files (csv, txt, images, fasta, etc.). Attach a data artifact to the Run of whatever *actually produced it*: a script's own Run if a script generated it, the session's Run only if you created the file directly with no script involved.
 
 ## Step 0 — Use the right Python
 
@@ -51,6 +51,8 @@ The session id/cwd are known right now and never change — persist the transcri
 
 Mentally track every file you **create or significantly modify** (not files you only read). Make sure you always save the lamindb session (do step 3) even if user doesn't ask.
 
+For each script you write and then execute (`.py`/`.ipynb`/`.R`/`.Rmd`/`.qmd`), also note: the script's path, roughly when you ran it (start/end), and which output file(s) that specific execution produced. This grouping is what lets Step 3 build correct lineage — a data file gets attached to the script that made it, not to the session generically.
+
 ## Step 3 — End of session: build the report, close the run
 
 User confirmation is not required. Always do Step 3.
@@ -69,7 +71,13 @@ In that one script, in order:
 4. **Per content block**, by `type`: `text` → render prose. `thinking` → if the `thinking` field is non-empty, render collapsed (`<details>`); if it's empty (Claude Code sometimes stores only an encrypted `signature` with no plaintext), skip the block entirely — don't render an empty collapsible section. `tool_use` → if `name=="Bash"` show `input["command"]` raw, else pretty-print `input` as JSON; label with tool name. `tool_result` → join `content` text and render as output. Anything else → skip silently.
 5. **Render one HTML page**, one block per turn, transcript order. Rules: `html.escape` all transcript text (untrusted). Distinguish user/assistant visually, and tool calls/results from prose. Light theme only (white/light background). Truncate any block past a few thousand chars.
 6. **Save the report** — write HTML to a temp file, `ln.Artifact(path, description="Claude Code session transcript (rendered)", run=False).save()`, set `run.report = <artifact>`, delete the temp file.
-7. **Save output files** — for each file from step 2 that still exists, `ln.Artifact(path, description="<what it is>", run=run).save()`.
+7. **Save output files with correct lineage** — for each *executed script* tracked in step 2:
+   - `script_transform = ln.Transform.from_path(script_path); script_transform.save()` (infers `kind="script"`/`"notebook"` and pulls in the source automatically — never construct this manually as a plain `Artifact`).
+   - `script_run = ln.Run(script_transform, initiated_by_run=run); script_run.started_at = <when it ran>; script_run.save()`.
+   - For each output file that execution produced: `ln.Artifact(path, description="<what it is>", run=script_run).save()`.
+   - `script_run.finished_at = <when it finished>; script_run.save()`.
+
+   For any other file you created/modified directly, with no script producing it, attach it to the session's own run as before: `ln.Artifact(path, description="<what it is>", run=run).save()`.
 8. **Close the run** — `run.finished_at = datetime.now(timezone.utc)`; `run.save()`; delete `.claude/.lamindb_run_uid` and `.claude/.lamindb_transcript_path`.
 
 If `lamindb`/`uv` isn't available or no instance is connected: skip all of this, tell the user, proceed with their task anyway.
