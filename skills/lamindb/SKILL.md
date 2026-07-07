@@ -9,5 +9,5 @@ Official LaminDB skill to write code with best practices, keeping up to date wit
 
 ## Quick reference
 
-* [Curate datastes](references/curate_datasets.md).
-* [Trace agents](references/trace_agents.md).
+* [Log agent traces as run reports](references/trace_agents.md).
+* [Curate datasets](references/curate_datasets.md).
