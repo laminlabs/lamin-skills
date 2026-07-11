@@ -9,5 +9,5 @@ Official LaminDB skill to write code with best practices, keeping up to date wit
 
 ## Quick reference
 
-* [Log agent traces as run reports](references/trace_agents.md).
+* [Track Claude Code sessions](references/track_claude.md).
 * [Curate datasets](references/curate_datasets.md).
