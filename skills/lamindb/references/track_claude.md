@@ -1,9 +1,4 @@
----
-name: lamindb-track
-description: MUST invoke this first, before responding to anything else, at the start of every single session in this project — no matter what the user's first message is (writing code, creating a file, answering a question, debugging). This project requires every session to be tracked in LaminDB as a Transform + Run. Skipping this step is a mistake even if the task looks unrelated to tracking, logging, or data — invoke unconditionally, then proceed with the user's actual request.
----
-
-# LaminDB Session Tracking (Claude Code only)
+# Track Claude Code session in LaminDB
 
 ## Concepts
 - **Transform**: code, not data. `__claudecode__` is the one fixed Transform for the whole project representing the chat session itself (the "agent run"). **Any script you write to accomplish the user's task (`.py`/`.ipynb`/`.R`/`.Rmd`/`.qmd`) is its own separate Transform, tracked automatically the moment it runs** — never save a script as a plain Artifact. Getting this backwards destroys the lineage from script to the data it produced, which is the entire point of LaminDB.
