@@ -8,7 +8,7 @@ description: MUST invoke this first, before responding to anything else, at the 
 ## Concepts
 - **Transform**: code, not data. `__claudecode__` is the one fixed Transform for the whole project representing the chat session itself (the "agent run"). **Any script you write to accomplish the user's task (`.py`/`.ipynb`/`.R`/`.Rmd`/`.qmd`) is its own separate Transform, tracked automatically the moment it runs** — never save a script as a plain Artifact. Getting this backwards destroys the lineage from script to the data it produced, which is the entire point of LaminDB.
 - **Run**: an execution. The session gets one Run of `__claudecode__` (the **agent run**). Every script you write self-tracks its *own* Run the instant it executes, linked back to the agent run via `initiated_by_run` — see "Self-tracking scripts" below. You never construct the script's Transform/Run by hand from outside.
-- **Two distinct link fields — do not conflate them**: `Run.initiated_by_run` (on the *Run* model) says "this execution was triggered by that other run" — it only exists once a script actually executes, and renders in its own "This run initiated" panel in the UI, not as an output. `Transform.run` (on the *Transform* model, separate field) says "this piece of code was authored/produced during that run" — it's what makes a script show up in the agent run's **Output** column (alongside artifacts), the way a plain output file does. `ln.track()` never sets `Transform.run` on its own — `lamin-finish-claudecode` stamps it explicitly at session close, so a script counts as a session output even if it's the *only* thing produced.
+- **Two distinct link fields — do not conflate them**: `Run.initiated_by_run` (on the *Run* model) says "this execution was triggered by that other run" — it only exists once a script actually executes, and renders in its own "This run initiated" panel in the UI, not as an output. `Transform.run` (on the *Transform* model, separate field) says "this piece of code was authored/produced during that run" — it's what makes a script show up in the agent run's **Output** column (alongside artifacts), the way a plain output file does. `ln.track()` never sets `Transform.run` on its own — `lamin track finish` stamps it explicitly at session close, so a script counts as a session output even if it's the *only* thing produced.
 - **Never save a script as a plain Artifact.** Scripts (`.py`/`.ipynb`/`.R`/`.Rmd`/`.qmd`) must use `ln.track()` inside them. If you call `ln.Artifact("script.py").save()` you destroy the lineage between the code and the data it produced — that is the entire point of LaminDB and must never happen.
 - **run.report**: rendered HTML of the transcript, saved as an Artifact and linked to the agent run.
 - **Artifact**: data only — output files (csv, txt, images, fasta, etc.). A script's own `ln.Artifact(path).save()` calls (no `run=` needed) auto-attach to that script's own run. Only files you create directly, with no script involved, get attached to the agent run manually.
@@ -40,26 +40,24 @@ Then execute with:
 LAMIN_INITIATED_BY_RUN_UID=$(cat .claude/.lamindb_run_uid) uv run --with lamindb --with jupyter jupyter nbconvert --to notebook --execute notebook.ipynb --inplace
 ```
 
-`LAMIN_INITIATED_BY_RUN_UID` links the script's/notebook's self-created Run back to the agent run automatically. This alone only sets `Run.initiated_by_run`; `lamin-finish-claudecode` separately stamps `Transform.run` so the file also shows up as a session **output**, not just an "initiated" run.
+`LAMIN_INITIATED_BY_RUN_UID` links the script's/notebook's self-created Run back to the agent run automatically. This alone only sets `Run.initiated_by_run`; `lamin track finish` separately stamps `Transform.run` so the file also shows up as a session **output**, not just an "initiated" run.
 
 ## Step 1 — Start of session (before the user's actual task)
 
-Resolve the binary (it's sometimes only in a project-local `.venv`, not on `PATH`, so a bare `command not found` doesn't mean tracking is unavailable) and run it in one command:
+Start tracking with the `lamin` CLI (installed alongside `lamindb`). If `lamin` is not on `PATH`, it may only be in a project-local `.venv` — try `.venv/bin/lamin` before concluding tracking is unavailable:
 
 ```bash
-TRACK_BIN=$(command -v lamin-track-claudecode 2>/dev/null || find . -maxdepth 6 -type f -name lamin-track-claudecode 2>/dev/null | head -1)
-if [ -z "$TRACK_BIN" ]; then
-  echo "NOT_FOUND: lamin-track-claudecode"
+LAMIN_BIN=$(command -v lamin 2>/dev/null || find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
+if [ -z "$LAMIN_BIN" ]; then
+  echo "NOT_FOUND: lamin"
 else
-  mkdir -p .claude
-  dirname "$TRACK_BIN" > .claude/.lamindb_bin_dir
-  "$TRACK_BIN" --description "<one sentence describing this session's task>" || true
+  "$LAMIN_BIN" track claude --name "<one sentence describing this session's task>" || true
 fi
 ```
 
-If this prints `NOT_FOUND: ...`: tell the user tracking isn't available on this machine and proceed with their actual task untracked. Do not attempt Step 2/3 for the rest of the session — there's no run to attach anything to.
+If this prints `NOT_FOUND: ...` (or the command errors, e.g. no lamindb instance connected): tell the user tracking isn't available and proceed with their actual task untracked. Do not attempt Step 2/3 for the rest of the session — there's no run to attach anything to.
 
-Otherwise this creates (or reuses) the `__claudecode__` Transform, opens a Run, and writes `.claude/.lamindb_run_uid`, `.claude/.lamindb_transcript_path`, and `.claude/.lamindb_bin_dir` (the resolved binary directory, reused by Step 3) for use at session end.
+Otherwise this creates (or reuses) the `__claudecode__` Transform, opens a Run, and writes `.claude/.lamindb_run_uid` and `.claude/.lamindb_transcript_path` for use at session end.
 
 ## Step 2 — During the session
 
@@ -84,17 +82,16 @@ ln.Artifact('output.csv', description='<what it is>', run=run).save()
 "
 ```
 
-Then close the session, reusing the binary directory resolved in Step 1:
+Then close the session:
 ```bash
-FINISH_BIN="$(cat .claude/.lamindb_bin_dir 2>/dev/null)/lamin-finish-claudecode"
-[ -x "$FINISH_BIN" ] || FINISH_BIN=$(command -v lamin-finish-claudecode 2>/dev/null)
-if [ -z "$FINISH_BIN" ]; then
-  echo "NOT_FOUND: lamin-finish-claudecode"
+LAMIN_BIN=$(command -v lamin 2>/dev/null || find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
+if [ -z "$LAMIN_BIN" ]; then
+  echo "NOT_FOUND: lamin"
 else
-  "$FINISH_BIN" || true
+  "$LAMIN_BIN" track finish || true
 fi
 ```
 
 This renders the transcript as HTML, saves it as a report artifact, stamps all child scripts as session outputs (`Transform.run`), closes the run, and cleans up the `.claude/` state files.
 
-If Step 1 printed `NOT_FOUND`, there is no run to close — skip Step 3 entirely. If either command prints `NOT_FOUND`, or the binary itself errors (e.g. no lamindb instance connected): tell the user, skip the rest of tracking, and proceed with their actual task anyway — tracking infrastructure should never block the user's real request.
+If Step 1 printed `NOT_FOUND`, there is no run to close — skip Step 3 entirely. If the command prints `NOT_FOUND`, or the binary itself errors (e.g. no lamindb instance connected): tell the user, skip the rest of tracking, and proceed with their actual task anyway — tracking infrastructure should never block the user's real request.
