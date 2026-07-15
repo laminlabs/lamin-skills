@@ -1,5 +1,7 @@
 # Track Claude Code session in LaminDB
 
+> Requires lamindb >= 2.8.1
+
 ## Concepts
 - **Transform**: code, not data. `__claudecode__` is the one fixed Transform for the whole project representing the chat session itself (the "agent run"). **Any script you write to accomplish the user's task (`.py`/`.ipynb`/`.R`/`.Rmd`/`.qmd`) is its own separate Transform, tracked automatically the moment it runs** — never save a script as a plain Artifact. Getting this backwards destroys the lineage from script to the data it produced, which is the entire point of LaminDB.
 - **Run**: an execution. The session gets one Run of `__claudecode__` (the **agent run**). Every script you write self-tracks its *own* Run the instant it executes, linked back to the agent run via `initiated_by_run` — see "Self-tracking scripts" below. You never construct the script's Transform/Run by hand from outside.
@@ -22,7 +24,7 @@ ln.finish()
 
 **Running Python scripts** — always set `LAMIN_INITIATED_BY_RUN_UID` and always go through `uv`, never plain `python3 script.py`:
 ```bash
-LAMIN_INITIATED_BY_RUN_UID=$(cat .claude/.lamindb_run_uid) uv run --with lamindb python script.py
+LAMIN_INITIATED_BY_RUN_UID=$(cat .claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}) uv run --with lamindb python script.py
 ```
 
 **Jupyter notebooks** — `ln.track()` cannot auto-detect the notebook path when run via `nbconvert`, and without `new_run=True` it loads the latest run instead of creating a new one. Fix both by passing `path` and `new_run=True` explicitly in the first cell:
@@ -32,7 +34,7 @@ ln.track(path="notebook.ipynb", new_run=True)
 ```
 Then execute with:
 ```bash
-LAMIN_INITIATED_BY_RUN_UID=$(cat .claude/.lamindb_run_uid) uv run --with lamindb --with jupyter jupyter nbconvert --to notebook --execute notebook.ipynb --inplace
+LAMIN_INITIATED_BY_RUN_UID=$(cat .claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}) uv run --with lamindb --with jupyter jupyter nbconvert --to notebook --execute notebook.ipynb --inplace
 ```
 
 `LAMIN_INITIATED_BY_RUN_UID` links the script's/notebook's self-created Run back to the agent run automatically. This alone only sets `Run.initiated_by_run`; `lamin track finish` separately stamps `Transform.run` so the file also shows up as a session **output**, not just an "initiated" run.
@@ -42,7 +44,8 @@ LAMIN_INITIATED_BY_RUN_UID=$(cat .claude/.lamindb_run_uid) uv run --with lamindb
 Start tracking with the `lamin` CLI (installed alongside `lamindb`). If `lamin` is not on `PATH`, it may only be in a project-local `.venv` — try `.venv/bin/lamin` before concluding tracking is unavailable:
 
 ```bash
-LAMIN_BIN=$(command -v lamin 2>/dev/null || find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
+LAMIN_BIN=$(find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
+[ -z "$LAMIN_BIN" ] && LAMIN_BIN=$(command -v lamin 2>/dev/null)
 if [ -z "$LAMIN_BIN" ]; then
   echo "NOT_FOUND: lamin"
 else
@@ -52,7 +55,7 @@ fi
 
 If this prints `NOT_FOUND: ...` (or the command errors, e.g. no lamindb instance connected): tell the user tracking isn't available and proceed with their actual task untracked. Do not attempt Step 2/3 for the rest of the session — there's no run to attach anything to.
 
-Otherwise this creates (or reuses) the `__claudecode__` Transform, opens a Run, and writes `.claude/.lamindb_run_uid` and `.claude/.lamindb_transcript_path` for use at session end.
+Otherwise this creates (or reuses) the `__claudecode__` Transform, opens a Run, and writes `.claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}` and `.claude/.lamindb_transcript_path_${CLAUDE_CODE_SESSION_ID}` for use at session end.
 
 ## Step 2 — During the session
 
@@ -71,7 +74,8 @@ User confirmation is not required. Always do Step 3.
 uv run --with lamindb python -c "
 import lamindb as ln
 from pathlib import Path
-run = ln.Run.get(uid=Path('.claude/.lamindb_run_uid').read_text().strip())
+import os
+run = ln.Run.get(uid=Path(f'.claude/.lamindb_run_uid_{os.environ[\"CLAUDE_CODE_SESSION_ID\"]}').read_text().strip())
 ln.Artifact('output.csv', description='<what it is>', run=run).save()
 # repeat for each direct file
 "
@@ -79,7 +83,8 @@ ln.Artifact('output.csv', description='<what it is>', run=run).save()
 
 Then close the session:
 ```bash
-LAMIN_BIN=$(command -v lamin 2>/dev/null || find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
+LAMIN_BIN=$(find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
+[ -z "$LAMIN_BIN" ] && LAMIN_BIN=$(command -v lamin 2>/dev/null)
 if [ -z "$LAMIN_BIN" ]; then
   echo "NOT_FOUND: lamin"
 else
