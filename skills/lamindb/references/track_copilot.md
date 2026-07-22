@@ -2,7 +2,7 @@
 
 See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers only what's specific to Copilot.
 
-**Do not write your own tracking logic at any point in this session.** Run every command below exactly as shown, as its own separate tool call, in order — Step 1 now, the script/notebook command every time you run one, and Step 3 at the end. Do not substitute an inline `ln.track()` you write yourself, do not skip a step because the task seems simple, and do not consider the task finished until Step 3's `lamin track finish` has actually run.
+**Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — Step 1 now, the script/notebook command each time you run one, and Step 3 at the end. Don't skip a step because the task seems simple, and don't consider it finished until Step 3's `lamin track finish` has actually run.
 
 ## Step 1 — Start of session
 
@@ -53,4 +53,4 @@ ln.Artifact('output.csv', description='<what it is>', run=run).save()
 "
 ```
 
-Then, always, run the closing command described in [SKILL.md](../SKILL.md) (`lamin track finish`) as its own tool call — same command regardless of harness, it resolves which Copilot session is finishing on its own, the same way Step 1 does. The session is not done until this has actually run; do not stop after just writing/running the user's script.
+Then run [SKILL.md](../SKILL.md)'s Step 3 closing command (`lamin track finish`) as its own tool call — it resolves which Copilot session is finishing the same way Step 1 does. Don't stop after just writing/running the user's script.

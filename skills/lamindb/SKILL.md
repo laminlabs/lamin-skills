@@ -1,6 +1,6 @@
 ---
 name: lamindb
-description: "MUST invoke this before writing a single word of response or taking any action of any kind — creating a file, running a command, answering a question, anything. This is a hard requirement, not a judgment call. Do not evaluate whether the task seems related to tracking, data, or LaminDB, and do not decide it's too trivial, small, or fast to bother — that evaluation is itself the exact failure this exists to prevent. Track the session in LaminDB as a Transform + Run, following the harness-specific reference for how your particular coding agent resolves its own session. Invoke unconditionally, first, every single message, with zero exceptions, before proceeding to the user's actual request."
+description: "MUST invoke this before writing a single word of response or taking any action of any kind — creating a file, running a command, answering a question, anything. This is a hard requirement, not a judgment call: do not evaluate whether the task seems related to tracking, data, or LaminDB, or decide it's too trivial, small, or fast to bother. Track the session in LaminDB as a Transform + Run, following the harness-specific reference for how your particular coding agent resolves its own session. Invoke unconditionally, first, every single message, with zero exceptions, before proceeding to the user's actual request."
 ---
 
 # LaminDB
@@ -40,11 +40,9 @@ When you actually **run** such a script or notebook, always set `LAMIN_INITIATED
 
 ## Step 1 — Start of session (before the user's actual task)
 
-Determine which coding agent you are running as, and follow the matching reference:
-- **Claude Code** → follow [Track Claude Code sessions](references/track_claude.md)
-- **GitHub Copilot** → follow [Track Copilot sessions](references/track_copilot.md)
+Determine which coding agent you are running as and follow the matching file under Quick reference below.
 
-Each starts tracking with `lamin track <agent>`, which creates (or reuses) that harness's fixed Transform, opens a Run, and writes local state used at session end. **Run the exact command shown in your reference file as its own tool call — do not write your own tracking logic instead, and do not skip straight to the user's task without running it first.** If tracking isn't available (`lamin` not found, or the command errors — e.g. no lamindb instance connected): tell the user tracking isn't available and proceed with their actual task untracked. Do not attempt Step 2/3 for the rest of the session — there's no run to attach anything to.
+Each starts tracking with `lamin track <agent>`, which creates (or reuses) that harness's fixed Transform and opens a Run — see your reference file for the exact command and what it writes. **Run the exact command shown in your reference file as its own tool call — do not write your own tracking logic instead, and do not skip straight to the user's task without running it first.** If tracking isn't available (`lamin` not found, or the command errors — e.g. no lamindb instance connected): tell the user tracking isn't available and proceed with their actual task untracked. Do not attempt Step 2/3 for the rest of the session — there's no run to attach anything to.
 
 ## Step 2 — During the session
 

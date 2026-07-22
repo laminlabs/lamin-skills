@@ -36,11 +36,10 @@ If you created output files directly (no script involved):
 uv run --with lamindb python -c "
 import lamindb as ln
 from pathlib import Path
-import os
-run = ln.Run.get(uid=Path(f'.claude/.lamindb_run_uid_{os.environ[\"CLAUDE_CODE_SESSION_ID\"]}').read_text().strip())
+run = ln.Run.get(uid=Path('.claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}').read_text().strip())
 ln.Artifact('output.csv', description='<what it is>', run=run).save()
 # repeat for each direct file
 "
 ```
 
-Then close the session as described in [SKILL.md](../SKILL.md) (`lamin track finish`, same command regardless of harness).
+Then close the session per [SKILL.md](../SKILL.md) Step 3 (`lamin track finish`).
