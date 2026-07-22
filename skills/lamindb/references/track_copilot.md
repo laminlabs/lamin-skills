@@ -17,7 +17,7 @@ else
 fi
 ```
 
-This resolves your current session on its own (no session-id environment variable exists for Copilot, unlike Claude Code) and writes `.claude/.lamindb_run_uid_copilot_<session-id>` — safe for parallel sessions in the same directory, since each gets its own uniquely suffixed file.
+This resolves your current session on its own (no session-id environment variable exists for Copilot, unlike Claude Code) and writes `.copilot/.lamindb_run_uid_copilot_<session-id>` — safe for parallel sessions in the same directory, since each gets its own uniquely suffixed file.
 
 ## Running self-tracking scripts and notebooks
 
@@ -26,7 +26,7 @@ Copilot has no environment variable identifying the current session, so a plain 
 ```bash
 MARKER="lamin-<write a fresh random-looking token here each time>"
 SESSION_ID=$(grep -l "$MARKER" ~/.copilot/session-state/*/events.jsonl 2>/dev/null | head -1 | xargs dirname | xargs basename)
-LAMIN_INITIATED_BY_RUN_UID=$(cat ".claude/.lamindb_run_uid_copilot_${SESSION_ID}") uv run --with lamindb python script.py
+LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copilot_${SESSION_ID}") uv run --with lamindb python script.py
 ```
 
 `MARKER` must be a literal string written directly into the command — not computed at runtime (e.g. not `$(date +%s)`) — since it's matched against the exact command text Copilot already logged before this script started running.
@@ -35,7 +35,7 @@ For notebooks, same idea:
 ```bash
 MARKER="lamin-<fresh token>"
 SESSION_ID=$(grep -l "$MARKER" ~/.copilot/session-state/*/events.jsonl 2>/dev/null | head -1 | xargs dirname | xargs basename)
-LAMIN_INITIATED_BY_RUN_UID=$(cat ".claude/.lamindb_run_uid_copilot_${SESSION_ID}") uv run --with lamindb --with jupyter jupyter nbconvert --to notebook --execute notebook.ipynb --inplace
+LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copilot_${SESSION_ID}") uv run --with lamindb --with jupyter jupyter nbconvert --to notebook --execute notebook.ipynb --inplace
 ```
 
 ## Step 3 — Attaching direct output files
@@ -47,7 +47,7 @@ SESSION_ID=$(grep -l "$MARKER" ~/.copilot/session-state/*/events.jsonl 2>/dev/nu
 uv run --with lamindb python -c "
 import lamindb as ln
 from pathlib import Path
-run = ln.Run.get(uid=Path('.claude/.lamindb_run_uid_copilot_${SESSION_ID}').read_text().strip())
+run = ln.Run.get(uid=Path('.copilot/.lamindb_run_uid_copilot_${SESSION_ID}').read_text().strip())
 ln.Artifact('output.csv', description='<what it is>', run=run).save()
 # repeat for each direct file
 "
