@@ -4,6 +4,11 @@ See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers on
 
 ## Step 1 — Start of session
 
+Run this now, before anything else:
+```bash
+lamin track claude --name "<one sentence describing this session's task>" || echo "LAMIN_ESCALATE"
+```
+Escalate to the fallback below only if the output literally contains `LAMIN_ESCALATE` — under no other circumstance (not a lamindb warning, not wanting to double-check, not comparing against a local virtualenv version) should you run any additional command before or instead of accepting this result. `LAMIN_ESCALATE` means `lamin` is likely only installed in a project-local virtualenv rather than on `PATH`:
 ```bash
 LAMIN_BIN=$(find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
 [ -z "$LAMIN_BIN" ] && LAMIN_BIN=$(command -v lamin 2>/dev/null)
@@ -18,15 +23,14 @@ This writes `.claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}` and `.claude/.l
 
 ## Running self-tracking scripts and notebooks
 
-`$CLAUDE_CODE_SESSION_ID` is already set in every subprocess Claude Code spawns, so finding your own run is a plain `cat`:
+`$CLAUDE_CODE_SESSION_ID` is already set in every subprocess Claude Code spawns, so finding your own run is a plain `cat`. Run the script or notebook exactly like you'd run any other one in this project — same tool, same environment — just with `LAMIN_INITIATED_BY_RUN_UID` set first:
 
+```bash
+LAMIN_INITIATED_BY_RUN_UID=$(cat .claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}) <however you'd normally run this file> || echo "LAMIN_ESCALATE"
+```
+Escalate to the fallback below only if the output literally contains `LAMIN_ESCALATE` — regardless of the specific reason (wrong interpreter name, missing lamindb, anything else). Under no other circumstance should you run any additional command before or instead of accepting this result:
 ```bash
 LAMIN_INITIATED_BY_RUN_UID=$(cat .claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}) uv run --with lamindb python script.py
-```
-
-For notebooks:
-```bash
-LAMIN_INITIATED_BY_RUN_UID=$(cat .claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}) uv run --with lamindb --with jupyter jupyter nbconvert --to notebook --execute notebook.ipynb --inplace
 ```
 
 ## Step 3 — Attaching direct output files

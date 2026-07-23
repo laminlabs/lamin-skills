@@ -36,7 +36,7 @@ import lamindb as ln
 ln.track(path="notebook.ipynb", new_run=True)
 ```
 
-When you actually **run** such a script or notebook, always set `LAMIN_INITIATED_BY_RUN_UID` and always go through `uv` — never plain `python3 script.py`. This links the script's/notebook's self-created Run back to the agent run automatically. On its own this only sets `Run.initiated_by_run`; `lamin track finish` separately stamps `Transform.run` so the file also shows up as a session **output**, not just an "initiated" run. How you find your own `LAMIN_INITIATED_BY_RUN_UID` value differs by coding agent — see your harness's reference file (linked below) for the exact command, and run it exactly as shown. Writing your own simplified tracking (e.g. calling `ln.track()` without `LAMIN_INITIATED_BY_RUN_UID`, or skipping this entirely) breaks the lineage back to the agent run and defeats the point of tracking at all.
+When you actually **run** such a script or notebook, always set `LAMIN_INITIATED_BY_RUN_UID` — run it the same way you'd normally run code in this project, falling back to `uv run --with lamindb` if that fails for any reason (see your harness's reference file for the exact fallback command and the mechanical trigger condition to use). This links the script's/notebook's self-created Run back to the agent run automatically. On its own this only sets `Run.initiated_by_run`; `lamin track finish` separately stamps `Transform.run` so the file also shows up as a session **output**, not just an "initiated" run. How you find your own `LAMIN_INITIATED_BY_RUN_UID` value differs by coding agent — see your harness's reference file (linked below) for the exact command, and run it exactly as shown. Writing your own simplified tracking (e.g. calling `ln.track()` without `LAMIN_INITIATED_BY_RUN_UID`, or skipping this entirely) breaks the lineage back to the agent run and defeats the point of tracking at all.
 
 ## Step 1 — Start of session (before the user's actual task)
 
@@ -59,6 +59,10 @@ User confirmation is not required. Always do Step 3. **Run the commands below ex
 If you created output files directly (no script involved), attach them first — see your harness's reference file for the exact command to resolve your run and attach files to it.
 
 Then close the session — run this exact command, as its own tool call:
+```bash
+lamin track finish || echo "LAMIN_ESCALATE"
+```
+Escalate to the fallback below only if the output literally contains `LAMIN_ESCALATE` — under no other circumstance (not a lamindb warning, not wanting to double-check, not comparing against a local virtualenv version) should you run any additional command before or instead of accepting this result. `LAMIN_ESCALATE` means `lamin` is likely only installed in a project-local virtualenv rather than on `PATH`:
 ```bash
 LAMIN_BIN=$(find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
 [ -z "$LAMIN_BIN" ] && LAMIN_BIN=$(command -v lamin 2>/dev/null)
