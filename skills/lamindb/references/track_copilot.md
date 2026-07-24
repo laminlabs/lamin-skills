@@ -6,7 +6,7 @@ See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers on
 
 ## Step 1 — Start of session
 
-Run this now, before anything else:
+Run this now, before anything else (prefixed with `cd "<dev-dir>" &&` using the path resolved in [SKILL.md](../SKILL.md)'s Step 1, if any):
 ```bash
 lamin track copilot --name "<one sentence describing this session's task>" || echo "LAMIN_ESCALATE"
 ```
@@ -39,7 +39,7 @@ Do this **once**, then remember the `SESSION_ID` value printed here and reuse it
 
 ## Running self-tracking scripts and notebooks
 
-Run this exact pattern every time you execute a script or notebook, using the `SESSION_ID` you already resolved above — never without this wrapper, and never a hand-rolled `ln.track()` call without it either:
+Run this exact pattern every time you execute a script or notebook, using the `SESSION_ID` you already resolved above — never without this wrapper, and never a hand-rolled `ln.track()` call without it either. Prefix it with `cd "<dev-dir>" &&` using the path resolved in [SKILL.md](../SKILL.md)'s Step 1, if any:
 
 ```bash
 LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copilot_<SESSION_ID resolved above>") <however you'd normally run this file> || echo "LAMIN_ESCALATE"
@@ -54,7 +54,7 @@ LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copilot_<SESSION_ID 
 
 ## Step 3 — Attaching direct output files
 
-If you created output files directly (no script involved), attach them using the same `SESSION_ID`:
+If you created output files directly (no script involved), attach them using the same `SESSION_ID` (and the same `cd "<dev-dir>" &&` prefix, if any):
 ```bash
 uv run --with lamindb python -c "
 import lamindb as ln

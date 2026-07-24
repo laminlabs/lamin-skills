@@ -40,6 +40,22 @@ When you actually **run** such a script or notebook, always set `LAMIN_INITIATED
 
 ## Step 1 — Start of session (before the user's actual task)
 
+First, resolve whether this instance has a configured development directory — if so, every command below (in this file and your harness's reference file) should run from there instead of wherever you happen to be, so state stays consistent for the rest of the session:
+```bash
+lamin settings dev-dir get || echo "LAMIN_ESCALATE"
+```
+Escalate to the fallback below only if the output literally contains `LAMIN_ESCALATE` — under no other circumstance should you run any additional command before or instead of accepting this result. `LAMIN_ESCALATE` means `lamin` is likely only installed in a project-local virtualenv rather than on `PATH`:
+```bash
+LAMIN_BIN=$(find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
+[ -z "$LAMIN_BIN" ] && LAMIN_BIN=$(command -v lamin 2>/dev/null)
+if [ -z "$LAMIN_BIN" ]; then
+  echo "NOT_FOUND: lamin"
+else
+  "$LAMIN_BIN" settings dev-dir get || true
+fi
+```
+If the output is the literal string `None`, this instance has no dev-dir configured — proceed with every command below exactly as documented, from wherever you already are. Otherwise, remember the printed path exactly as shown — every command below, and every command in your harness's reference file, should be prefixed with `cd "<dev-dir>" &&` using that literal remembered path for the rest of this session. Don't re-resolve it, and don't rely on a shell variable to carry it forward — each tool call may run in a fresh subprocess, so type the literal path each time.
+
 Determine which coding agent you are running as and follow the matching file under Quick reference below.
 
 Each starts tracking with `lamin track <agent>`, which creates (or reuses) that harness's fixed Transform and opens a Run — see your reference file for the exact command and what it writes. **Run the exact command shown in your reference file as its own tool call — do not write your own tracking logic instead, and do not skip straight to the user's task without running it first.** If tracking isn't available (`lamin` not found, or the command errors — e.g. no lamindb instance connected): tell the user tracking isn't available and proceed with their actual task untracked. Do not attempt Step 2/3 for the rest of the session — there's no run to attach anything to.
@@ -58,7 +74,7 @@ User confirmation is not required. Always do Step 3. **Run the commands below ex
 
 If you created output files directly (no script involved), attach them first — see your harness's reference file for the exact command to resolve your run and attach files to it.
 
-Then close the session — run this exact command, as its own tool call:
+Then close the session — run this exact command, as its own tool call (prefixed with `cd "<dev-dir>" &&` using the path you resolved in Step 1, if any):
 ```bash
 lamin track finish || echo "LAMIN_ESCALATE"
 ```

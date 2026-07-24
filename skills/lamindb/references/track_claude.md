@@ -4,7 +4,7 @@ See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers on
 
 ## Step 1 — Start of session
 
-Run this now, before anything else:
+Run this now, before anything else (prefixed with `cd "<dev-dir>" &&` using the path resolved in [SKILL.md](../SKILL.md)'s Step 1, if any):
 ```bash
 lamin track claude --name "<one sentence describing this session's task>" || echo "LAMIN_ESCALATE"
 ```
@@ -23,7 +23,7 @@ This writes `.claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}` and `.claude/.l
 
 ## Running self-tracking scripts and notebooks
 
-`$CLAUDE_CODE_SESSION_ID` is already set in every subprocess Claude Code spawns, so finding your own run is a plain `cat`. Run the script or notebook exactly like you'd run any other one in this project — same tool, same environment — just with `LAMIN_INITIATED_BY_RUN_UID` set first:
+`$CLAUDE_CODE_SESSION_ID` is already set in every subprocess Claude Code spawns, so finding your own run is a plain `cat`. Run the script or notebook exactly like you'd run any other one in this project — same tool, same environment — just with `LAMIN_INITIATED_BY_RUN_UID` set first (and prefixed with `cd "<dev-dir>" &&` using the same remembered path, if any):
 
 ```bash
 LAMIN_INITIATED_BY_RUN_UID=$(cat .claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}) <however you'd normally run this file> || echo "LAMIN_ESCALATE"
@@ -35,7 +35,7 @@ LAMIN_INITIATED_BY_RUN_UID=$(cat .claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_
 
 ## Step 3 — Attaching direct output files
 
-If you created output files directly (no script involved):
+If you created output files directly (no script involved), prefixed with `cd "<dev-dir>" &&` using the same remembered path, if any:
 ```bash
 uv run --with lamindb python -c "
 import lamindb as ln
