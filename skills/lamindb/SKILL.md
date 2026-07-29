@@ -40,7 +40,7 @@ When you actually **run** such a script or notebook, always set `LAMIN_INITIATED
 
 ## Step 1 — Start of session (before the user's actual task)
 
-First, resolve whether this instance has a configured development directory — if so, every command below (in this file and your harness's reference file) should run from there instead of wherever you happen to be, so state stays consistent for the rest of the session:
+First, resolve whether this instance has a configured development directory. This matters for one specific reason: when you later run a self-tracking script, lamindb derives that script's own Transform key from the directory it actually executes in — so the script needs to run from the dev-dir for that key to be stable, and lamindb has no other way to know where that is.
 ```bash
 lamin settings dev-dir get || echo "LAMIN_ESCALATE"
 ```
@@ -54,7 +54,7 @@ else
   "$LAMIN_BIN" settings dev-dir get || true
 fi
 ```
-If the output is the literal string `None`, this instance has no dev-dir configured — proceed with every command below exactly as documented, from wherever you already are. Otherwise, remember the printed path exactly as shown — every command below, and every command in your harness's reference file, should be prefixed with `cd "<dev-dir>" &&` using that literal remembered path for the rest of this session. Don't re-resolve it, and don't rely on a shell variable to carry it forward — each tool call may run in a fresh subprocess, so type the literal path each time.
+If the output is the literal string `None`, this instance has no dev-dir configured — nothing further to do here. Otherwise, remember the printed path exactly as shown for later — you'll need it when running self-tracking scripts (see your harness's reference file for the exact command). `lamin track <agent>` and `lamin track finish` already resolve the dev-dir internally, so neither needs a `cd` prefix; script execution is the one place that does, since that's where the actual working directory affects lamindb's own behavior. Don't rely on a shell variable to carry the path forward — each tool call may run in a fresh subprocess, so type the literal path again when you need it.
 
 Determine which coding agent you are running as and follow the matching file under Quick reference below.
 
@@ -74,7 +74,7 @@ User confirmation is not required. Always do Step 3. **Run the commands below ex
 
 If you created output files directly (no script involved), attach them first — see your harness's reference file for the exact command to resolve your run and attach files to it.
 
-Then close the session — run this exact command, as its own tool call (prefixed with `cd "<dev-dir>" &&` using the path you resolved in Step 1, if any):
+Then close the session — run this exact command, as its own tool call (no `cd` needed — it resolves the dev-dir internally, the same as Step 1's `lamin track <agent>`):
 ```bash
 lamin track finish || echo "LAMIN_ESCALATE"
 ```

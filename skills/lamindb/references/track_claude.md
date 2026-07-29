@@ -4,7 +4,7 @@ See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers on
 
 ## Step 1 — Start of session
 
-Run this now, before anything else (prefixed with `cd "<dev-dir>" &&` using the path resolved in [SKILL.md](../SKILL.md)'s Step 1, if any):
+Run this now, before anything else (no `cd` needed — it resolves the dev-dir internally, see [SKILL.md](../SKILL.md)'s Step 1):
 ```bash
 lamin track claude --name "<one sentence describing this session's task>" || echo "LAMIN_ESCALATE"
 ```
@@ -19,7 +19,7 @@ else
 fi
 ```
 
-This writes `.claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}` and `.claude/.lamindb_transcript_path_${CLAUDE_CODE_SESSION_ID}`, keyed by Claude Code's own session id — safe for parallel sessions in the same directory since each gets its own uniquely suffixed file.
+This writes `.claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}` and `.claude/.lamindb_transcript_path_${CLAUDE_CODE_SESSION_ID}`, keyed by Claude Code's own session id — safe for parallel sessions in the same directory since each gets its own uniquely suffixed file. If a dev-dir is configured, these live there instead of cwd, so `lamin track finish` finds them consistently regardless of which directory it's invoked from.
 
 ## Running self-tracking scripts and notebooks
 
@@ -35,12 +35,12 @@ LAMIN_INITIATED_BY_RUN_UID=$(cat .claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_
 
 ## Step 3 — Attaching direct output files
 
-If you created output files directly (no script involved), prefixed with `cd "<dev-dir>" &&` using the same remembered path, if any:
+If you created output files directly (no script involved), no `cd` needed for this one — just build the path directly using the dev-dir resolved in [SKILL.md](../SKILL.md)'s Step 1, if any (otherwise use the plain relative path shown):
 ```bash
 uv run --with lamindb python -c "
 import lamindb as ln
 from pathlib import Path
-run = ln.Run.get(uid=Path('.claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}').read_text().strip())
+run = ln.Run.get(uid=Path('<dev-dir, if any>/.claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}').read_text().strip())
 ln.Artifact('output.csv', description='<what it is>', run=run).save()
 # repeat for each direct file
 "

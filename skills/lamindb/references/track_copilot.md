@@ -2,11 +2,11 @@
 
 See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers only what's specific to Copilot.
 
-**Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — Step 1 now, then resolve your session id once, then the script/notebook command each time you run one, and Step 3 at the end. Don't skip a step because the task seems simple, and don't consider it finished until Step 3's `lamin track finish` has actually run.
+**Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — [SKILL.md](../SKILL.md)'s Step 1 (`lamin settings dev-dir get`) first, then Step 1 here, then resolve your session id once, then the script/notebook command each time you run one, and Step 3 at the end. **You must actually run that dev-dir command — never assume it equals the current working directory, even if that seems obvious.** Don't skip a step because the task seems simple, and don't consider it finished until Step 3's `lamin track finish` has actually run.
 
 ## Step 1 — Start of session
 
-Run this now, before anything else (prefixed with `cd "<dev-dir>" &&` using the path resolved in [SKILL.md](../SKILL.md)'s Step 1, if any):
+Run this now (no `cd` needed — it resolves the dev-dir internally):
 ```bash
 lamin track copilot --name "<one sentence describing this session's task>" || echo "LAMIN_ESCALATE"
 ```
@@ -21,7 +21,7 @@ else
 fi
 ```
 
-This resolves your current session on its own (no session-id environment variable exists for Copilot, unlike Claude Code) and writes `.copilot/.lamindb_run_uid_copilot_<session-id>` — safe for parallel sessions in the same directory, since each gets its own uniquely suffixed file.
+This resolves your current session on its own (no session-id environment variable exists for Copilot, unlike Claude Code) and writes `.copilot/.lamindb_run_uid_copilot_<session-id>` — safe for parallel sessions in the same directory, since each gets its own uniquely suffixed file. If a dev-dir is configured, this lives there instead of cwd, so `lamin track finish` finds it consistently regardless of which directory it's invoked from.
 
 ## Resolve your session id once
 
@@ -54,12 +54,12 @@ LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copilot_<SESSION_ID 
 
 ## Step 3 — Attaching direct output files
 
-If you created output files directly (no script involved), attach them using the same `SESSION_ID` (and the same `cd "<dev-dir>" &&` prefix, if any):
+If you created output files directly (no script involved), attach them using the same `SESSION_ID`. No `cd` needed for this one — just build the path directly using the dev-dir resolved in [SKILL.md](../SKILL.md)'s Step 1, if any (otherwise use the plain relative path shown):
 ```bash
 uv run --with lamindb python -c "
 import lamindb as ln
 from pathlib import Path
-run = ln.Run.get(uid=Path('.copilot/.lamindb_run_uid_copilot_<SESSION_ID resolved above>').read_text().strip())
+run = ln.Run.get(uid=Path('<dev-dir, if any>/.copilot/.lamindb_run_uid_copilot_<SESSION_ID resolved above>').read_text().strip())
 ln.Artifact('output.csv', description='<what it is>', run=run).save()
 # repeat for each direct file
 "
