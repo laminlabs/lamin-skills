@@ -8,9 +8,9 @@ See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers on
 
 Run this now (no `cd` needed — it resolves the dev-dir internally):
 ```bash
-lamin track copilot --name "<one sentence describing this session's task>" || echo "LAMIN_ESCALATE"
+lamin track copilot --name "<one sentence describing this session's task>"
 ```
-Escalate to the fallback below only if the output literally contains `LAMIN_ESCALATE` — under no other circumstance (not a lamindb warning, not wanting to double-check, not comparing against a local virtualenv version) should you run any additional command before or instead of accepting this result. `LAMIN_ESCALATE` means `lamin` is likely only installed in a project-local virtualenv rather than on `PATH`:
+Escalate to the fallback below only if this command errors (non-zero exit status) — under no other circumstance (not a lamindb warning, not wanting to double-check, not comparing against a local virtualenv version) should you run any additional command before or instead of accepting this result. A command error here usually means `lamin` is likely only installed in a project-local virtualenv rather than on `PATH`:
 ```bash
 LAMIN_BIN=$(find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
 [ -z "$LAMIN_BIN" ] && LAMIN_BIN=$(command -v lamin 2>/dev/null)
@@ -42,12 +42,12 @@ Do this **once**, then remember the `SESSION_ID` value printed here and reuse it
 Run this exact pattern every time you execute a script or notebook, using the `SESSION_ID` you already resolved above — never without this wrapper, and never a hand-rolled `ln.track()` call without it either. Prefix it with `cd "<dev-dir>" &&` using the path resolved in [SKILL.md](../SKILL.md)'s Step 1, if any:
 
 ```bash
-LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copilot_<SESSION_ID resolved above>") <however you'd normally run this file> || echo "LAMIN_ESCALATE"
+LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copilot_<SESSION_ID resolved above>") <however you'd normally run this file>
 ```
 
 Run the file itself exactly like you'd run any other script or notebook in this project — same tool, same environment — the only requirement is that `LAMIN_INITIATED_BY_RUN_UID` is set first.
 
-Escalate to the fallback below only if the output literally contains `LAMIN_ESCALATE` — regardless of the specific reason (wrong interpreter name, missing lamindb, anything else). Under no other circumstance should you run any additional command before or instead of accepting this result. Retry as a separate command, still using the same `SESSION_ID`, this time via `uv run`:
+Escalate to the fallback below only if this command errors (non-zero exit status) — regardless of the specific reason (wrong interpreter name, missing lamindb, anything else). Under no other circumstance should you run any additional command before or instead of accepting this result. Retry as a separate command, still using the same `SESSION_ID`, this time via `uv run`:
 ```bash
 LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copilot_<SESSION_ID resolved above>") uv run --with lamindb python script.py
 ```
