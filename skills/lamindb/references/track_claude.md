@@ -19,7 +19,7 @@ else
 fi
 ```
 
-This writes `.claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}` and `.claude/.lamindb_transcript_path_${CLAUDE_CODE_SESSION_ID}`, keyed by Claude Code's own session id — safe for parallel sessions in the same directory since each gets its own uniquely suffixed file. If a dev-dir is configured, these live there instead of cwd, so `lamin track finish` finds them consistently regardless of which directory it's invoked from.
+This writes `.claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}` and `.claude/.lamindb_transcript_path_${CLAUDE_CODE_SESSION_ID}`, keyed by Claude Code's own session id — safe for parallel sessions in the same directory since each gets its own uniquely suffixed file. If a dev-dir is configured, these live there instead of cwd, so `lamin finish` finds them consistently regardless of which directory it's invoked from.
 
 ## Running self-tracking scripts and notebooks
 
@@ -46,4 +46,4 @@ ln.Artifact('output.csv', description='<what it is>', run=run).save()
 "
 ```
 
-Then close the session per [SKILL.md](../SKILL.md) Step 3 (`lamin track finish`).
+Then close the session per [SKILL.md](../SKILL.md) Step 3 (`lamin finish`).

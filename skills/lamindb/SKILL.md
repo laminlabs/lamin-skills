@@ -13,7 +13,7 @@ Official LaminDB skill to write code with best practices, keeping up to date wit
 
 - **Transform**: code, not data. Each coding agent/harness has its own fixed Transform for the whole project representing that harness's sessions (the "agent run") — `__claudecode__` for Claude Code, `__copilot__` for Copilot. **Any script you write to accomplish the user's task (`.py`/`.ipynb`/`.R`/`.Rmd`/`.qmd`) is its own separate Transform, tracked automatically the moment it runs** — never save a script as a plain Artifact. Getting this backwards destroys the lineage from script to the data it produced, which is the entire point of LaminDB.
 - **Run**: an execution. The session gets one Run of your harness's fixed Transform (the **agent run**). Every script you write self-tracks its *own* Run the instant it executes, linked back to the agent run via `initiated_by_run` — see "Self-tracking scripts" below. You never construct the script's Transform/Run by hand from outside.
-- **Two distinct link fields — do not conflate them**: `Run.initiated_by_run` (on the *Run* model) says "this execution was triggered by that other run" — it only exists once a script actually executes, and renders in its own "This run initiated" panel in the UI, not as an output. `Transform.run` (on the *Transform* model, separate field) says "this piece of code was authored/produced during that run" — it's what makes a script show up in the agent run's **Output** column (alongside artifacts), the way a plain output file does. `ln.track()` never sets `Transform.run` on its own — `lamin track finish` stamps it explicitly at session close, so a script counts as a session output even if it's the *only* thing produced.
+- **Two distinct link fields — do not conflate them**: `Run.initiated_by_run` (on the *Run* model) says "this execution was triggered by that other run" — it only exists once a script actually executes, and renders in its own "This run initiated" panel in the UI, not as an output. `Transform.run` (on the *Transform* model, separate field) says "this piece of code was authored/produced during that run" — it's what makes a script show up in the agent run's **Output** column (alongside artifacts), the way a plain output file does. `ln.track()` never sets `Transform.run` on its own — `lamin finish` stamps it explicitly at session close, so a script counts as a session output even if it's the *only* thing produced.
 - **Never save a script as a plain Artifact.** Scripts (`.py`/`.ipynb`/`.R`/`.Rmd`/`.qmd`) must use `ln.track()` inside them. If you call `ln.Artifact("script.py").save()` you destroy the lineage between the code and the data it produced — that is the entire point of LaminDB and must never happen.
 - **run.report**: rendered HTML of the transcript, saved as an Artifact and linked to the agent run.
 - **Artifact**: data only — output files (csv, txt, images, fasta, etc.). A script's own `ln.Artifact(path).save()` calls (no `run=` needed) auto-attach to that script's own run. Only files you create directly, with no script involved, get attached to the agent run manually.
@@ -36,7 +36,7 @@ import lamindb as ln
 ln.track(path="notebook.ipynb", new_run=True)
 ```
 
-When you actually **run** such a script or notebook, always set `LAMIN_INITIATED_BY_RUN_UID` — run it the same way you'd normally run code in this project, falling back to `uv run --with lamindb` if that fails for any reason (see your harness's reference file for the exact fallback command and the mechanical trigger condition to use). This links the script's/notebook's self-created Run back to the agent run automatically. On its own this only sets `Run.initiated_by_run`; `lamin track finish` separately stamps `Transform.run` so the file also shows up as a session **output**, not just an "initiated" run. How you find your own `LAMIN_INITIATED_BY_RUN_UID` value differs by coding agent — see your harness's reference file (linked below) for the exact command, and run it exactly as shown. Writing your own simplified tracking (e.g. calling `ln.track()` without `LAMIN_INITIATED_BY_RUN_UID`, or skipping this entirely) breaks the lineage back to the agent run and defeats the point of tracking at all.
+When you actually **run** such a script or notebook, always set `LAMIN_INITIATED_BY_RUN_UID` — run it the same way you'd normally run code in this project, falling back to `uv run --with lamindb` if that fails for any reason (see your harness's reference file for the exact fallback command and the mechanical trigger condition to use). This links the script's/notebook's self-created Run back to the agent run automatically. On its own this only sets `Run.initiated_by_run`; `lamin finish` separately stamps `Transform.run` so the file also shows up as a session **output**, not just an "initiated" run. How you find your own `LAMIN_INITIATED_BY_RUN_UID` value differs by coding agent — see your harness's reference file (linked below) for the exact command, and run it exactly as shown. Writing your own simplified tracking (e.g. calling `ln.track()` without `LAMIN_INITIATED_BY_RUN_UID`, or skipping this entirely) breaks the lineage back to the agent run and defeats the point of tracking at all.
 
 ## Step 1 — Start of session (before the user's actual task)
 
@@ -54,7 +54,7 @@ else
   "$LAMIN_BIN" settings dev-dir get || true
 fi
 ```
-If the output is the literal string `None`, this instance has no dev-dir configured — nothing further to do here. Otherwise, remember the printed path exactly as shown for later — you'll need it when running self-tracking scripts (see your harness's reference file for the exact command). `lamin track <agent>` and `lamin track finish` already resolve the dev-dir internally, so neither needs a `cd` prefix; script execution is the one place that does, since that's where the actual working directory affects lamindb's own behavior. Don't rely on a shell variable to carry the path forward — each tool call may run in a fresh subprocess, so type the literal path again when you need it.
+If the output is the literal string `None`, this instance has no dev-dir configured — nothing further to do here. Otherwise, remember the printed path exactly as shown for later — you'll need it when running self-tracking scripts (see your harness's reference file for the exact command). `lamin track <agent>` and `lamin finish` already resolve the dev-dir internally, so neither needs a `cd` prefix; script execution is the one place that does, since that's where the actual working directory affects lamindb's own behavior. Don't rely on a shell variable to carry the path forward — each tool call may run in a fresh subprocess, so type the literal path again when you need it.
 
 Determine which coding agent you are running as and follow the matching file under Quick reference below.
 
@@ -70,13 +70,13 @@ Make sure you always do Step 3 at the end of the session, even if the user doesn
 
 ## Step 3 — End of session
 
-User confirmation is not required. Always do Step 3. **Run the commands below exactly as shown — do not skip this step, and do not consider the task done until `lamin track finish` has actually been run.**
+User confirmation is not required. Always do Step 3. **Run the commands below exactly as shown — do not skip this step, and do not consider the task done until `lamin finish` has actually been run.**
 
 If you created output files directly (no script involved), attach them first — see your harness's reference file for the exact command to resolve your run and attach files to it.
 
 Then close the session — run this exact command, as its own tool call (no `cd` needed — it resolves the dev-dir internally, the same as Step 1's `lamin track <agent>`):
 ```bash
-lamin track finish || echo "LAMIN_ESCALATE"
+lamin finish || echo "LAMIN_ESCALATE"
 ```
 Escalate to the fallback below only if the output literally contains `LAMIN_ESCALATE` — under no other circumstance (not a lamindb warning, not wanting to double-check, not comparing against a local virtualenv version) should you run any additional command before or instead of accepting this result. `LAMIN_ESCALATE` means `lamin` is likely only installed in a project-local virtualenv rather than on `PATH`:
 ```bash
