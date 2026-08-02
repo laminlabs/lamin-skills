@@ -2,7 +2,7 @@
 
 See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers only what's specific to Copilot.
 
-**Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — [SKILL.md](../SKILL.md)'s Step 1 (`lamin settings dev-dir get`) first, then Step 1 here, then resolve your session id once, then the script/notebook command each time you run one, and Step 3 at the end. **You must actually run that dev-dir command — never assume it equals the current working directory, even if that seems obvious.** Don't skip a step because the task seems simple, and don't consider it finished until Step 3's `lamin track finish` has actually run.
+**Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — [SKILL.md](../SKILL.md)'s Step 1 (`lamin settings dev-dir get`) first, then Step 1 here, then resolve your session id once, then the script/notebook command each time you run one, and Step 3 at the end. **You must actually run that dev-dir command — never assume it equals the current working directory, even if that seems obvious.** Don't skip a step because the task seems simple, and don't consider it finished until Step 3's `lamin finish` has actually run.
 
 ## Step 1 — Start of session
 
@@ -21,7 +21,7 @@ else
 fi
 ```
 
-This resolves your current session on its own (no session-id environment variable exists for Copilot, unlike Claude Code) and writes `.copilot/.lamindb_run_uid_copilot_<session-id>` — safe for parallel sessions in the same directory, since each gets its own uniquely suffixed file. If a dev-dir is configured, this lives there instead of cwd, so `lamin track finish` finds it consistently regardless of which directory it's invoked from.
+This resolves your current session on its own (no session-id environment variable exists for Copilot, unlike Claude Code) and writes `.copilot/.lamindb_run_uid_copilot_<session-id>` — safe for parallel sessions in the same directory, since each gets its own uniquely suffixed file. If a dev-dir is configured, this lives there instead of cwd, so `lamin finish` finds it consistently regardless of which directory it's invoked from.
 
 ## Resolve your session id once
 
@@ -65,4 +65,4 @@ ln.Artifact('output.csv', description='<what it is>', run=run).save()
 "
 ```
 
-Then run [SKILL.md](../SKILL.md)'s Step 3 closing command (`lamin track finish`) as its own tool call — it resolves which Copilot session is finishing the same way Step 1 does. Don't stop after just writing/running the user's script.
+Then run [SKILL.md](../SKILL.md)'s Step 3 closing command (`lamin finish`) as its own tool call — it resolves which Copilot session is finishing the same way Step 1 does. Don't stop after just writing/running the user's script.
