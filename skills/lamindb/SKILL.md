@@ -42,9 +42,9 @@ When you actually **run** such a script or notebook, always set `LAMIN_INITIATED
 
 First, resolve whether this instance has a configured development directory. This matters for one specific reason: when you later run a self-tracking script, lamindb derives that script's own Transform key from the directory it actually executes in — so the script needs to run from the dev-dir for that key to be stable, and lamindb has no other way to know where that is.
 ```bash
-lamin settings dev-dir get || echo "LAMIN_ESCALATE"
+lamin settings dev-dir get
 ```
-Escalate to the fallback below only if the output literally contains `LAMIN_ESCALATE` — under no other circumstance should you run any additional command before or instead of accepting this result. `LAMIN_ESCALATE` means `lamin` is likely only installed in a project-local virtualenv rather than on `PATH`:
+Escalate to the fallback below only if this command errors (non-zero exit status). Under no other circumstance should you run any additional command before or instead of accepting this result. A command error here usually means `lamin` is only installed in a project-local virtualenv rather than on `PATH`:
 ```bash
 LAMIN_BIN=$(find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
 [ -z "$LAMIN_BIN" ] && LAMIN_BIN=$(command -v lamin 2>/dev/null)
@@ -76,9 +76,9 @@ If you created output files directly (no script involved), attach them first —
 
 Then close the session — run this exact command, as its own tool call (no `cd` needed — it resolves the dev-dir internally, the same as Step 1's `lamin track <agent>`):
 ```bash
-lamin finish || echo "LAMIN_ESCALATE"
+lamin finish
 ```
-Escalate to the fallback below only if the output literally contains `LAMIN_ESCALATE` — under no other circumstance (not a lamindb warning, not wanting to double-check, not comparing against a local virtualenv version) should you run any additional command before or instead of accepting this result. `LAMIN_ESCALATE` means `lamin` is likely only installed in a project-local virtualenv rather than on `PATH`:
+Escalate to the fallback below only if this command errors (non-zero exit status) — under no other circumstance (not a lamindb warning, not wanting to double-check, not comparing against a local virtualenv version) should you run any additional command before or instead of accepting this result. A command error here usually means `lamin` is likely only installed in a project-local virtualenv rather than on `PATH`:
 ```bash
 LAMIN_BIN=$(find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
 [ -z "$LAMIN_BIN" ] && LAMIN_BIN=$(command -v lamin 2>/dev/null)
