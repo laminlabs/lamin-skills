@@ -1,6 +1,6 @@
 ---
 name: lamindb
-description: "MUST invoke this before writing a single word of response or taking any action of any kind — creating a file, running a command, answering a question, anything. This is a hard requirement, not a judgment call: do not evaluate whether the task seems related to tracking, data, or LaminDB, or decide it's too trivial, small, or fast to bother. Track the session in LaminDB as a Transform + Run, following the harness-specific reference for how your particular coding agent resolves its own session. Invoke unconditionally, first, every single message, with zero exceptions, before proceeding to the user's actual request."
+description: "MUST invoke this before writing a single word of response or taking any action of any kind — creating a file, running a command, answering a question, anything. Applies to every message, including ones that don't look like they need it: a greeting, small talk, a one-word reply, a trivial math question, anything that seems unrelated to code or data. There is no message type that is exempt. This is a hard requirement, not a judgment call: do not evaluate whether the task seems related to tracking, data, or LaminDB, and do not decide a message is too trivial, small, unrelated, or fast to bother with. Track the session in LaminDB as a Transform + Run, following the harness-specific reference for how your particular coding agent resolves its own session. Invoke unconditionally, first, every single message, with zero exceptions, before proceeding to the user's actual request. If you are about to respond without having invoked this skill first, stop — that is already a mistake, regardless of how the conversation started."
 ---
 
 # LaminDB
@@ -11,7 +11,7 @@ Official LaminDB skill to write code with best practices, keeping up to date wit
 
 ## Concepts
 
-- **Transform**: code, not data. Each coding agent/harness has its own fixed Transform for the whole project representing that harness's sessions (the "agent run") — `__claudecode__` for Claude Code, `__copilot__` for Copilot. **Any script you write to accomplish the user's task (`.py`/`.ipynb`/`.R`/`.Rmd`/`.qmd`) is its own separate Transform, tracked automatically the moment it runs** — never save a script as a plain Artifact. Getting this backwards destroys the lineage from script to the data it produced, which is the entire point of LaminDB.
+- **Transform**: code, not data. Each coding agent/harness has its own fixed Transform for the whole project representing that harness's sessions (the "agent run") — internally keyed `__claudecode__` for Claude Code and `__copilot__` for Copilot. **These are internal database identifiers only, never CLI arguments or command names** — the actual commands are plain `lamin track claude` and `lamin track copilot`, with no underscores; see your harness's reference file for the exact syntax rather than constructing a command from these keys. **Any script you write to accomplish the user's task (`.py`/`.ipynb`/`.R`/`.Rmd`/`.qmd`) is its own separate Transform, tracked automatically the moment it runs** — never save a script as a plain Artifact. Getting this backwards destroys the lineage from script to the data it produced, which is the entire point of LaminDB.
 - **Run**: an execution. The session gets one Run of your harness's fixed Transform (the **agent run**). Every script you write self-tracks its *own* Run the instant it executes, linked back to the agent run via `initiated_by_run` — see "Self-tracking scripts" below. You never construct the script's Transform/Run by hand from outside.
 - **Two distinct link fields — do not conflate them**: `Run.initiated_by_run` (on the *Run* model) says "this execution was triggered by that other run" — it only exists once a script actually executes, and renders in its own "This run initiated" panel in the UI, not as an output. `Transform.run` (on the *Transform* model, separate field) says "this piece of code was authored/produced during that run" — it's what makes a script show up in the agent run's **Output** column (alongside artifacts), the way a plain output file does. `ln.track()` never sets `Transform.run` on its own — `lamin finish` stamps it explicitly at session close, so a script counts as a session output even if it's the *only* thing produced.
 - **Never save a script as a plain Artifact.** Scripts (`.py`/`.ipynb`/`.R`/`.Rmd`/`.qmd`) must use `ln.track()` inside them. If you call `ln.Artifact("script.py").save()` you destroy the lineage between the code and the data it produced — that is the entire point of LaminDB and must never happen.
@@ -51,18 +51,20 @@ LAMIN_BIN=$(find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
 if [ -z "$LAMIN_BIN" ]; then
   echo "NOT_FOUND: lamin"
 else
-  "$LAMIN_BIN" settings dev-dir get || true
+  "$LAMIN_BIN" settings dev-dir get
 fi
 ```
 If the output is the literal string `None`, this instance has no dev-dir configured — nothing further to do here. Otherwise, remember the printed path exactly as shown for later — you'll need it when running self-tracking scripts (see your harness's reference file for the exact command). `lamin track <agent>` and `lamin finish` already resolve the dev-dir internally, so neither needs a `cd` prefix; script execution is the one place that does, since that's where the actual working directory affects lamindb's own behavior. Don't rely on a shell variable to carry the path forward — each tool call may run in a fresh subprocess, so type the literal path again when you need it.
 
 Determine which coding agent you are running as and follow the matching file under Quick reference below.
 
-Each starts tracking with `lamin track <agent>`, which creates (or reuses) that harness's fixed Transform and opens a Run — see your reference file for the exact command and what it writes. **Run the exact command shown in your reference file as its own tool call — do not write your own tracking logic instead, and do not skip straight to the user's task without running it first.** If tracking isn't available (`lamin` not found, or the command errors — e.g. no lamindb instance connected): tell the user tracking isn't available and proceed with their actual task untracked. Do not attempt Step 2/3 for the rest of the session — there's no run to attach anything to.
+Before running the tracking command, ask the user a single yes/no question — "Should this session be tracked in LaminDB?". **If your harness has a dedicated clarifying-question or ask-user tool, you must use it — do not fall back to plain response text when a real interactive mechanism is available.** Only ask directly in your response text if no such tool exists at all. **This is a blocking question: stop and wait for the user's actual reply before doing anything else.** Do not assume an answer, do not phrase it as "I'll proceed unless you say no," and do not continue in the same turn — treat it exactly like any other question you'd wait for a real answer to. Ask this once, at the very start of the session, regardless of how obviously code-related the task seems — every session, no exceptions in either direction. If the user declines, do not run `lamin track <agent>` or attempt Step 2/3 for the rest of the session — there's no run to attach anything to. Only once the user has explicitly replied yes (or an equivalent affirmative), proceed with the command below.
+
+Each starts tracking with `lamin track <agent>`, which creates (or reuses) that harness's fixed Transform and opens a Run — see your reference file for the exact command and what it writes. **Run the exact command shown in your reference file as its own tool call — do not write your own tracking logic instead, do not add any other command alongside it, and do not skip straight to the user's task without running it first.** If tracking isn't available (`lamin` not found, or the command errors — e.g. no lamindb instance connected): tell the user tracking isn't available and proceed with their actual task untracked. Do not attempt Step 2/3 for the rest of the session — there's no run to attach anything to.
 
 ## Step 2 — During the session
 
-Any script you write to do the task gets the `ln.track()`/`ln.finish()` instrumentation from "Self-tracking scripts" above, and gets run with `LAMIN_INITIATED_BY_RUN_UID` set per your harness's reference file — this already handles lineage for anything a script produces.
+Every script you write to do the task — the first one and every later one, on any message in this session — gets the `ln.track()`/`ln.finish()` instrumentation from "Self-tracking scripts" above, and gets run with `LAMIN_INITIATED_BY_RUN_UID` set per your harness's reference file — this already handles lineage for anything a script produces. Having done Step 1 once already does not exempt a later script from this wrapper.
 
 Mentally note only the files you create or modify **directly, with no script involved** — those need manual attachment before finishing (see Step 3, and your harness's reference file for how to resolve your run).
 
@@ -85,7 +87,7 @@ LAMIN_BIN=$(find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
 if [ -z "$LAMIN_BIN" ]; then
   echo "NOT_FOUND: lamin"
 else
-  "$LAMIN_BIN" track finish || true
+  "$LAMIN_BIN" finish
 fi
 ```
 
