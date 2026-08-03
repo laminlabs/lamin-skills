@@ -2,11 +2,11 @@
 
 See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers only what's specific to Copilot.
 
-**Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — [SKILL.md](../SKILL.md)'s Step 1 (`lamin settings dev-dir get`) first, then Step 1 here, then resolve your session id once, then the script/notebook command each time you run one, and Step 3 at the end. **You must actually run that dev-dir command — never assume it equals the current working directory, even if that seems obvious.** Don't skip a step because the task seems simple, and don't consider it finished until Step 3's `lamin finish` has actually run.
+**Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — [SKILL.md](../SKILL.md)'s Step 1 (`lamin settings dev-dir get`) first, then [SKILL.md](../SKILL.md)'s ask-the-user step, then Step 1 here, then the script/notebook command each time you run one, and Step 3 at the end. **You must actually run that dev-dir command — never assume it equals the current working directory, even if that seems obvious.** Don't skip a step because the task seems simple. If the user declined tracking at the ask-the-user step, stop here — there's nothing further to run, including Step 3. Otherwise, don't consider it finished until Step 3's `lamin finish` has actually run.
 
 ## Step 1 — Start of session
 
-Run this now (no `cd` needed — it resolves the dev-dir internally):
+Run this now (no `cd` needed — it resolves the dev-dir internally). **`--name` is mandatory — never omit it, never run this command without it:**
 ```bash
 lamin track copilot --name "<one sentence describing this session's task>"
 ```
@@ -17,39 +17,32 @@ LAMIN_BIN=$(find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
 if [ -z "$LAMIN_BIN" ]; then
   echo "NOT_FOUND: lamin"
 else
-  "$LAMIN_BIN" track copilot --name "<one sentence describing this session's task>" || true
+  "$LAMIN_BIN" track copilot --name "<one sentence describing this session's task>"
 fi
 ```
 
 This resolves your current session on its own (no session-id environment variable exists for Copilot, unlike Claude Code) and writes `.copilot/.lamindb_run_uid_copilot_<session-id>` — safe for parallel sessions in the same directory, since each gets its own uniquely suffixed file. If a dev-dir is configured, this lives there instead of cwd, so `lamin finish` finds it consistently regardless of which directory it's invoked from.
 
-## Resolve your session id once
-
-Copilot has no environment variable identifying the current session, so immediately after Step 1, resolve your `SESSION_ID` once by embedding a fresh literal token in a command and matching it against your own session's transcript:
-
-```bash
-MARKER="lamin-<16+ random alphanumeric characters, mixing case and digits, e.g. 7kP2x9Qm4wZ1a6Tb — never a short or guessable string like abc123 or test1>"
-SESSION_ID=$(grep -l "$MARKER" ~/.copilot/session-state/*/events.jsonl 2>/dev/null | head -1 | xargs dirname | xargs basename)
-echo "$SESSION_ID"
+**This command's output has two different values on the same line — do not confuse them:**
 ```
-
-`MARKER` must be a literal string written directly into the command — not computed at runtime (e.g. not `$(date +%s)`) — since it's matched against the exact command text Copilot already logged before this command ran. It must also have real entropy: a short or guessable marker (like `abc123`) risks colliding with another session's marker, or a stale entry from earlier in this same session, which would resolve the wrong `SESSION_ID`/`RUN_UID` and silently link things to the wrong session.
-
-Do this **once**, then remember the `SESSION_ID` value printed here and reuse it literally — not re-derive it — in every command below for the rest of this session. Each separate tool call runs in a fresh subprocess, so the shell variable itself won't persist; only what you remember from this output carries forward.
+started tracking Copilot session: SESSION_ID=<uuid> run_uid=<other-value>
+```
+**Remember the `SESSION_ID` value exactly as printed — you'll reuse it literally, not re-derive it, in every command below for the rest of this session.** `run_uid` is a separate, internal value you never need again. Each separate tool call runs in a fresh subprocess, so nothing persists on its own — only what you remember from this output carries forward.
 
 ## Running self-tracking scripts and notebooks
 
-Run this exact pattern every time you execute a script or notebook, using the `SESSION_ID` you already resolved above — never without this wrapper, and never a hand-rolled `ln.track()` call without it either. Prefix it with `cd "<dev-dir>" &&` using the path resolved in [SKILL.md](../SKILL.md)'s Step 1, if any:
+Run this exact pattern every time you execute a script or notebook, using the `SESSION_ID` you already resolved above — never without this wrapper, and never a hand-rolled `ln.track()` call without it either. Prefix it with `cd "<dev-dir>" &&` using the path resolved in [SKILL.md](../SKILL.md)'s Step 1, if any. **Do not add flags, error-suppression (`2>/dev/null`, `|| true`), or any other modification to the `cat` command — run it exactly as shown.** If the file doesn't exist, let `cat` fail visibly rather than silently substituting an empty value.
 
 ```bash
-LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copilot_<SESSION_ID resolved above>") <however you'd normally run this file>
+printf 'y\n' | LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copilot_<SESSION_ID resolved above>") <however you'd normally run this file>
 ```
+The leading `printf 'y\n' |` auto-answers the "overwrite existing source code?" prompt `ln.track()` shows when a previously-tracked script's content has changed — normal when iterating — otherwise it hangs/crashes waiting for input that will never come.
 
 Run the file itself exactly like you'd run any other script or notebook in this project — same tool, same environment — the only requirement is that `LAMIN_INITIATED_BY_RUN_UID` is set first.
 
 Escalate to the fallback below only if this command errors (non-zero exit status) — regardless of the specific reason (wrong interpreter name, missing lamindb, anything else). Under no other circumstance should you run any additional command before or instead of accepting this result. Retry as a separate command, still using the same `SESSION_ID`, this time via `uv run`:
 ```bash
-LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copilot_<SESSION_ID resolved above>") uv run --with lamindb python script.py
+printf 'y\n' | LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copilot_<SESSION_ID resolved above>") uv run --with lamindb python script.py
 ```
 
 ## Step 3 — Attaching direct output files
