@@ -17,6 +17,7 @@ Official LaminDB skill to write code with best practices, keeping up to date wit
 - **Never save a script as a plain Artifact.** Scripts (`.py`/`.ipynb`/`.R`/`.Rmd`/`.qmd`) must use `ln.track()` inside them. If you call `ln.Artifact("script.py").save()` you destroy the lineage between the code and the data it produced — that is the entire point of LaminDB and must never happen.
 - **run.report**: rendered HTML of the transcript, saved as an Artifact and linked to the agent run.
 - **Artifact**: data only — output files (csv, txt, images, fasta, etc.). A script's own `ln.Artifact(path).save()` calls (no `run=` needed) auto-attach to that script's own run. Only files you create directly, with no script involved, get attached to the agent run manually.
+- **Always pass a meaningful `key`** when saving an Artifact — a stable, path-like name (e.g. `key="datasets/ataqseq_counts.csv"`), not left unset. Without a key, an Artifact can never be versioned against future updates to the same data. Only reuse the exact same key when a new save is genuinely a new version of that same dataset; use a distinct key otherwise, or unrelated saves will incorrectly get grouped into one version family.
 
 ## Self-tracking scripts and notebooks
 
@@ -26,7 +27,7 @@ Every script or notebook you write to do the user's actual task must instrument 
 import lamindb as ln
 ln.track()
 # ... the actual task ...
-ln.Artifact("output.csv", description="...").save()  # no run= needed, auto-attaches
+ln.Artifact("output.csv", key="<meaningful/folder/path>/output.csv", description="...").save()  # no run= needed, auto-attaches
 ln.finish()
 ```
 

@@ -53,7 +53,7 @@ uv run --with lamindb python -c "
 import lamindb as ln
 from pathlib import Path
 run = ln.Run.get(uid=Path('<dev-dir, if any>/.copilot/.lamindb_run_uid_copilot_<SESSION_ID resolved above>').read_text().strip())
-ln.Artifact('output.csv', description='<what it is>', run=run).save()
+ln.Artifact('output.csv', key='<meaningful/folder/path>/output.csv', description='<what it is>', run=run).save()
 # repeat for each direct file
 "
 ```
