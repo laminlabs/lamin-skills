@@ -18,6 +18,7 @@ Official LaminDB skill to write code with best practices, keeping up to date wit
 - **run.report**: rendered HTML of the transcript, saved as an Artifact and linked to the agent run.
 - **Artifact**: data only — output files (csv, txt, images, fasta, etc.). A script's own `ln.Artifact(path).save()` calls (no `run=` needed) auto-attach to that script's own run. Only files you create directly, with no script involved, get attached to the agent run manually.
 - **Always pass a meaningful `key`** when saving an Artifact — a stable, path-like name (e.g. `key="datasets/ataqseq_counts.csv"`), not left unset. Without a key, an Artifact can never be versioned against future updates to the same data. Only reuse the exact same key when a new save is genuinely a new version of that same dataset; use a distinct key otherwise, or unrelated saves will incorrectly get grouped into one version family.
+- **When a script needs data that an earlier script in this workflow already produced, retrieve it from LaminDB — never read the local file path directly.** Use `ln.Artifact.get(key="...")` (the same key it was saved under) followed by `.load()`; this is what registers that artifact as this run's input and forms the lineage edge between the two scripts. Reading the file straight off disk produces the same result but leaves LaminDB with no record that the two scripts are connected, silently breaking the workflow's lineage graph.
 
 ## Self-tracking scripts and notebooks
 
@@ -26,6 +27,9 @@ Every script or notebook you write to do the user's actual task must instrument 
 ```python
 import lamindb as ln
 ln.track()
+# if this step consumes an earlier step's output, retrieve it — never read the local file path directly:
+# input_artifact = ln.Artifact.get(key="<key used when it was saved>")
+# df = input_artifact.load()  # registers it as this run's input, forming the lineage edge
 # ... the actual task ...
 ln.Artifact("output.csv", key="<meaningful/folder/path>/output.csv", description="...").save()  # no run= needed, auto-attaches
 ln.finish()
