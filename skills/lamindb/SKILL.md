@@ -69,7 +69,7 @@ Each starts tracking with `lamin track <agent>`, which creates (or reuses) that 
 
 ## Step 2 — During the session
 
-Every script you write to do the task — the first one and every later one, on any message in this session — gets the `ln.track()`/`ln.finish()` instrumentation from "Self-tracking scripts" above, and gets run with `LAMIN_INITIATED_BY_RUN_UID` set per your harness's reference file — this already handles lineage for anything a script produces. Having done Step 1 once already does not exempt a later script from this wrapper.
+Every script you write to do the task — the first one and every later one, on any message in this session — gets the `ln.track()`/`ln.finish()` instrumentation from "Self-tracking scripts" above, and gets run with `LAMIN_INITIATED_BY_RUN_UID` set per your harness's reference file — this already handles lineage for anything a script produces. Having done Step 1 once already does not exempt a later script from this wrapper. **This applies even to a script that just generates, fetches, or prepares input data before the "real" pipeline runs — there is no "just setup," "just a quick test," or "just dummy data" exemption.** If a script exists and gets executed, it gets the wrapper — full stop, regardless of how small or preliminary it feels. A local file that never went through `ln.track()`/`ln.Artifact(...).save()` cannot be turned into a real input later; the lineage gap it leaves is permanent.
 
 Mentally note only the files you create or modify **directly, with no script involved** — those need manual attachment before finishing (see Step 3, and your harness's reference file for how to resolve your run).
 
