@@ -1,6 +1,6 @@
 ---
 name: lamindb
-description: "MUST invoke this before writing a single word of response or taking any action of any kind — creating a file, running a command, answering a question, anything. Applies to every message, including ones that don't look like they need it: a greeting, small talk, a one-word reply, a trivial math question, anything that seems unrelated to code or data. There is no message type that is exempt. This is a hard requirement, not a judgment call: do not evaluate whether the task seems related to tracking, data, or LaminDB, and do not decide a message is too trivial, small, unrelated, or fast to bother with. Track the session in LaminDB as a Transform + Run, following the harness-specific reference for how your particular coding agent resolves its own session. Invoke unconditionally, first, every single message, with zero exceptions, before proceeding to the user's actual request. If you are about to respond without having invoked this skill first, stop — that is already a mistake, regardless of how the conversation started."
+description: "MUST invoke before responding to ANY message — including greetings, small talk, trivial math, anything that looks unrelated. Not a judgment call: never skip it, never decide a message is too trivial. Tracks this session in LaminDB as a Transform + Run. If you are about to respond without invoking this first, stop — that is already a mistake."
 ---
 
 # LaminDB
