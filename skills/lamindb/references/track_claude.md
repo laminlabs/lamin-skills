@@ -43,7 +43,7 @@ uv run --with lamindb python -c "
 import lamindb as ln
 from pathlib import Path
 run = ln.Run.get(uid=Path('<dev-dir, if any>/.claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}').read_text().strip())
-ln.Artifact('output.csv', description='<what it is>', run=run).save()
+ln.Artifact('output.csv', key='<meaningful/folder/path>/output.csv', description='<what it is>', run=run).save()
 # repeat for each direct file
 "
 ```
