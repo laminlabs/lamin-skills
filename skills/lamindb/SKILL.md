@@ -73,6 +73,19 @@ Every script you write to do the task — the first one and every later one, on 
 
 For any script that's written, its inputs should not be local; they must be lamindb artifacts. If an input is available locally, it must be uploaded to lamindb as an artifact before running the script and adding the run to lamin. If any script was run or code was generated within the session to create that input, this script or code should also be added to lamin.
 
+For EVERY python script that you create and plan to run, whether its run directly or indirectly, we want to verify that it insures proper lineage in lamindb before running it — if it does not, we will need to modify it to do so before running it. User confirmation is not required before doing this. This needs to be run without fail. If you can't run this, quit the session. To check this, run the following and make sure that all assertions pass. If any assertion fails, the script does not properly track lineage and needs to be modified before running it. The `script_path` variable should be set to the path of the script you are verifying:
+```python
+from lamindb.core import verify_lineage
+result = verify_lineage(script_path)
+
+assert result.is_fully_tracked is True
+assert result.has_lineage_tracking is True
+assert result.has_lamindb_inputs is True
+assert result.has_lamindb_outputs is True
+assert result.has_external_inputs is False
+assert result.missing == ()
+```
+
 Mentally note only the files you create or modify **directly, with no script involved** — those need manual attachment before finishing (see Step 3, and your harness's reference file for how to resolve your run).
 
 Make sure you always do Step 3 at the end of the session, even if the user doesn't ask.
