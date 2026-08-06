@@ -79,11 +79,7 @@ from lamindb.core import verify_lineage
 result = verify_lineage(script_path)
 
 assert result.is_fully_tracked is True
-assert result.has_lineage_tracking is True
-assert result.has_lamindb_inputs is True
-assert result.has_lamindb_outputs is True
-assert result.has_external_inputs is False
-assert result.missing == ()
+assert result.missing_lineage == ()
 ```
 
 Mentally note only the files you create or modify **directly, with no script involved** — those need manual attachment before finishing (see Step 3, and your harness's reference file for how to resolve your run).
