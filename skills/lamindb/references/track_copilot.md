@@ -58,4 +58,8 @@ ln.Artifact('output.csv', key='<meaningful/folder/path>/output.csv', description
 "
 ```
 
-Then run [SKILL.md](../SKILL.md)'s Step 3 closing command (`lamin finish`) as its own tool call — it resolves which Copilot session is finishing the same way Step 1 does. Don't stop after just writing/running the user's script.
+Then run [SKILL.md](../SKILL.md)'s Step 3 closing command as its own tool call, using the same `SESSION_ID` you resolved in Step 1 — **do not run bare `lamin finish`**:
+```bash
+lamin finish --session-id "<SESSION_ID resolved above>"
+```
+Passing `--session-id` finishes this exact session directly, with no log-based guessing — this matters when another Copilot session is active in the same directory at the same time, since log-based matching on generic command text can't always tell two simultaneous sessions apart. Don't stop after just writing/running the user's script.
