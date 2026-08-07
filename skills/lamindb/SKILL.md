@@ -92,18 +92,22 @@ User confirmation is not required. Always do Step 3. **Run the commands below ex
 
 If you created output files directly (no script involved), attach them first — see your harness's reference file for the exact command to resolve your run and attach files to it.
 
-Then close the session — see your harness's reference file for the exact closing command (it's `lamin finish` for some harnesses, but not all — do not assume, check). Run it as its own tool call (no `cd` needed — it resolves the dev-dir internally, the same as Step 1's `lamin track <agent>`). Escalate to the fallback below only if it errors (non-zero exit status) — under no other circumstance should you run any additional command before or instead of accepting this result. A command error here usually means `lamin` is likely only installed in a project-local virtualenv rather than on `PATH`:
+Then close the session — run this exact command, as its own tool call (no `cd` needed — it resolves the dev-dir internally, the same as Step 1's `lamin track <agent>`):
+```bash
+lamin finish
+```
+Escalate to the fallback below only if this command errors (non-zero exit status) — under no other circumstance (not a lamindb warning, not wanting to double-check, not comparing against a local virtualenv version) should you run any additional command before or instead of accepting this result. A command error here usually means `lamin` is likely only installed in a project-local virtualenv rather than on `PATH`:
 ```bash
 LAMIN_BIN=$(find . -maxdepth 6 -type f -name lamin 2>/dev/null | head -1)
 [ -z "$LAMIN_BIN" ] && LAMIN_BIN=$(command -v lamin 2>/dev/null)
 if [ -z "$LAMIN_BIN" ]; then
   echo "NOT_FOUND: lamin"
 else
-  "$LAMIN_BIN" finish   # same arguments as the closing command above
+  "$LAMIN_BIN" finish
 fi
 ```
 
-It resolves whichever session is currently active, renders the transcript as HTML, saves it as a report artifact, stamps all child scripts as session outputs (`Transform.run`), closes the run, and cleans up the local state files.
+This is the same command regardless of harness — it resolves whichever session is currently active on its own, renders the transcript as HTML, saves it as a report artifact, stamps all child scripts as session outputs (`Transform.run`), closes the run, and cleans up the local state files.
 
 If Step 1 printed `NOT_FOUND`, there is no run to close — skip Step 3 entirely. If this command prints `NOT_FOUND`, or the binary itself errors (e.g. no lamindb instance connected): tell the user, skip the rest of tracking, and proceed with their actual task anyway — tracking infrastructure should never block the user's real request.
 
