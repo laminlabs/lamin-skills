@@ -73,7 +73,9 @@ Every script you write to do the task — the first one and every later one, on 
 
 For any script that's written, its inputs should not be local; they must be lamindb artifacts. If an input is available locally, it must be uploaded to lamindb as an artifact before running the script and adding the run to lamin. If any script was run or code was generated within the session to create that input, this script or code should also be added to lamin.
 
-For EVERY python script that you plan to run, whether it was created/modified by you in the session or already existed, whether its run directly or indirectly, we want to verify that it insures proper lineage in lamindb before running it — if it does not, we will need to modify it to do so before running it. User confirmation is not required before doing this. This needs to be run without fail. If you can't run this, quit the session. To check the lineage, run the following and make sure that it prints "Lineage is fully tracked". If it prints any "Missing lineage: ...", the script does not properly track lineage and needs to be modified before running it. The `script_path` variable should be set to the path of the script you are verifying:
+For EVERY python script that you plan to run, whether it was created/modified by you in the session or already existed, whether its run directly or indirectly, we want to verify that it insures proper lineage in lamindb before running it — if it does not, we will need to modify it to do so before running it. User confirmation is not required before doing this. This needs to be run without fail. If you can't run this, quit the session. **Hard gate: never run a script unless the most recent `verify_lineage(script_path)` result for that exact file prints `Lineage is fully tracked`. If it prints any `Missing lineage: ...`, do not run the script; modify it and repeat `verify_lineage` until it passes based on the 'Lineage remediation retry policy' section below. Never stop after the first failed fix attempt unless blocked by tool/runtime failure; you must complete up to 2 remediation iterations first.** Use the documentation here for help with fixing artifacts not being tracked: https://docs.lamin.ai/lamindb.artifact
+
+You can verify lineage by using the code below. The `script_path` variable should be set to the path of the script you are verifying:
 ```python
 from lamindb.core import verify_lineage
 result = verify_lineage(script_path)
@@ -88,6 +90,24 @@ else:
 Mentally note only the files you create or modify **directly, with no script involved** — those need manual attachment before finishing (see Step 3, and your harness's reference file for how to resolve your run).
 
 Make sure you always do Step 3 at the end of the session, even if the user doesn't ask.
+
+### Lineage remediation retry policy (mandatory)
+
+When `verify_lineage(script_path)` fails for a script that is intended to run:
+
+1. Attempt to fix the script and rerun `verify_lineage(script_path)`.
+2. If it still fails, attempt one more fix and rerun `verify_lineage(script_path)` again.
+3. Maximum remediation attempts: **2**.
+
+After 2 failed remediation attempts:
+
+- **Do not run the script.**
+- Ask the user for guidance or a manual fix using the interactive ask-user tool (when available).
+- Report both failed verify outputs and the exact remaining `missing_lineage` items.
+
+Hard gate remains: only run when the **most recent** verify result for that exact file is `Lineage is fully tracked`.
+
+
 
 ## Step 3 — End of session
 
