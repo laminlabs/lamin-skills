@@ -80,7 +80,7 @@ For any script that's written, its inputs should not be local; they must be lami
 
 For EVERY python script that you plan to run, whether it was created/modified by you in the session or already existed, whether its run directly or indirectly, we want to verify that it insures proper lineage in lamindb before running it — if it does not, we will need to modify it to do so before running it. User confirmation is not required before doing this. This needs to be run without fail. If you can't run this, quit the session. **Hard gate: never run a script unless the most recent `verify_lineage(script_path)` result for that exact file prints `Lineage is fully tracked`. If it prints any `Missing lineage: ...`, do not run the script; modify it and repeat `verify_lineage` until it passes based on the 'Lineage remediation retry policy' section below. Never stop after the first failed fix attempt unless blocked by tool/runtime failure; you must complete up to 2 remediation iterations first.** Use the documentation here for help with fixing artifacts not being tracked: https://docs.lamin.ai/lamindb.artifact
 
-You can verify lineage by using the code below. The `script_path` variable should be set to the path of the script you are verifying:
+You can verify lineage by using the code below. The `script_path` variable should be set to the path of the script you are verifying. Run it the same way you'd normally run Python in this project — same tool, same environment; escalate to `uv run --with lamindb python -c "..."` only if that errors (non-zero exit status), and only then:
 ```python
 from lamindb.core import verify_lineage
 result = verify_lineage(script_path)
