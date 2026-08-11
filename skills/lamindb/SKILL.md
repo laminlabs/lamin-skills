@@ -18,6 +18,7 @@ Official LaminDB skill to write code with best practices, keeping up to date wit
 - **run.report**: rendered HTML of the transcript, saved as an Artifact and linked to the agent run.
 - **Artifact**: data only — output files (csv, txt, images, fasta, etc.). A script's own `ln.Artifact(path).save()` calls (no `run=` needed) auto-attach to that script's own run. Only files you create directly, with no script involved, get attached to the agent run manually.
 - **Always pass a meaningful `key`** when saving an Artifact — a stable, path-like name (e.g. `key="datasets/ataqseq_counts.csv"`), not left unset. Without a key, an Artifact can never be versioned against future updates to the same data. Only reuse the exact same key when a new save is genuinely a new version of that same dataset; use a distinct key otherwise, or unrelated saves will incorrectly get grouped into one version family.
+- **Create artifacts from in-memory objects when possible**: Prefer `ln.Artifact.from_*()` over writing objects to disk and then calling `ln.Artifact(path).save()`. For example, use `ln.Artifact.from_anndata()` for `AnnData` and `ln.Artifact.from_dataframe()` for pandas `DataFrame`. **Do not use `df.to_csv(...)` (or similar) as an intermediate step if a matching `from_*` constructor exists**. Use path-based `ln.Artifact(path).save()` only when the output is genuinely file-native (e.g. image, FASTA, binary export, or a format without a `from_*` helper). If you're unsure whether a `from_*` helper exists for an object type, run `help(ln.Artifact)` to inspect supported constructors.
 - **When a script needs data that an earlier script in this workflow already produced, retrieve it from LaminDB — never read the local file path directly.** Use `ln.Artifact.get(key="...")` (the same key it was saved under) followed by `.load()`; this is what registers that artifact as this run's input and forms the lineage edge between the two scripts. Reading the file straight off disk produces the same result but leaves LaminDB with no record that the two scripts are connected, silently breaking the workflow's lineage graph.
 
 ## Self-tracking scripts and notebooks
@@ -28,10 +29,14 @@ Every script or notebook you write to do the user's actual task must instrument 
 import lamindb as ln
 ln.track()
 # if this step consumes an earlier step's output, retrieve it — never read the local file path directly:
-# input_artifact = ln.Artifact.get(key="<key used when it was saved>")
-# df = input_artifact.load()  # registers it as this run's input, forming the lineage edge
-# ... the actual task ...
-ln.Artifact("output.csv", key="<meaningful/folder/path>/output.csv", description="...").save()  # no run= needed, auto-attaches
+input_artifact = ln.Artifact.get(key="<key used when it was saved>")
+df = input_artifact.load()  # registers it as this run's input, forming the lineage edge
+# ... the actual task ... e.g. process_data(df)
+# for in-memory objects, prefer from_* constructors (no to_csv/to_parquet/any other intermediate write)
+artifact = ln.Artifact.from_dataframe(df, key="<meaningful/folder/path>/output.csv", description="...")
+artifact.save()
+# use path-based save only for genuinely file-native outputs:
+ln.Artifact("figure.png", key="<meaningful/folder/path>/figure.png", description="...").save()
 ln.finish()
 ```
 
