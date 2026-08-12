@@ -19,6 +19,23 @@ Official LaminDB skill to write code with best practices, keeping up to date wit
 - **Artifact**: data only — output files (csv, txt, images, fasta, etc.). A script's own `ln.Artifact(path).save()` calls (no `run=` needed) auto-attach to that script's own run. Only files you create directly, with no script involved, get attached to the agent run manually.
 - **Always pass a meaningful `key`** when saving an Artifact — a stable, path-like name (e.g. `key="datasets/ataqseq_counts.csv"`), not left unset. Without a key, an Artifact can never be versioned against future updates to the same data. Only reuse the exact same key when a new save is genuinely a new version of that same dataset; use a distinct key otherwise, or unrelated saves will incorrectly get grouped into one version family.
 - **When a script needs data that an earlier script in this workflow already produced, retrieve it from LaminDB — never read the local file path directly.** Use `ln.Artifact.get(key="...")` (the same key it was saved under) followed by `.load()`; this is what registers that artifact as this run's input and forms the lineage edge between the two scripts. Reading the file straight off disk produces the same result but leaves LaminDB with no record that the two scripts are connected, silently breaking the workflow's lineage graph.
+- **Linking artifacts in markdown or html**: If you want to link an artifact in a markdown or html file simply as a link or as an image, use the syntax below. This also applies to any other file formats linking to the artifacts e.g. jupyter notebooks.
+
+```python     
+import lamindb as ln
+artifact = ln.Artifact("output.csv").load()  # load the artifact by its path or UID
+# Get the artifact's URL
+artifact_url = artifact.create_download_link()  # returns a URL to download the artifact
+# Use the URL in your markdown
+markdown_link = f"[Download output.csv]({artifact_url})"
+html_link = f"<a href={artifact_url}>output.csv</a>"
+artifact = ln.Artifact("image.jpg").load()  # load the artifact by its path or UID
+# Get the artifact's URL
+artifact_url = artifact.create_download_link()  # returns a URL to download the artifact
+# Use the URL in your markdown
+markdown_link = f"![image.jpg]({artifact_url})"
+html_link = f"<img src={artifact_url}/>"
+```  
 
 ## Self-tracking scripts and notebooks
 
