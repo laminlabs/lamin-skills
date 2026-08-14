@@ -35,7 +35,7 @@ Escalate to the fallback below only if this command errors (non-zero exit status
 printf 'y\n' | LAMIN_INITIATED_BY_RUN_UID=$(cat .claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}) uv run --with lamindb python script.py
 ```
 
-## Step 3 — Attaching direct output files
+## Step 3a — Attaching direct output files
 
 If you created output files directly (no script involved), no `cd` needed for this one — just build the path directly using the dev-dir resolved in [SKILL.md](../SKILL.md)'s Step 1, if any (otherwise use the plain relative path shown):
 ```bash
@@ -48,4 +48,16 @@ ln.Artifact('output.csv', key='<meaningful/folder/path>/output.csv', description
 "
 ```
 
-Then close the session per [SKILL.md](../SKILL.md) Step 3 (`lamin finish`).
+## Step 3b — Cleaning up superseded transform versions
+
+Run [SKILL.md](../SKILL.md)'s Step 3b command — first as the plan, then, once the user approves, again with `LAMIN_CLEANUP_APPLY=1` — with this path substituted for `<your harness run-uid state file>` in both passes. It's the same file Step 1 wrote, built from the dev-dir resolved in [SKILL.md](../SKILL.md)'s Step 1, if any (otherwise the plain relative path):
+
+```
+<dev-dir, if any>/.claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}
+```
+
+`$CLAUDE_CODE_SESSION_ID` expands inside the `python -c` string because the surrounding shell quoting is double quotes — leave it as the variable rather than pasting a literal session id.
+
+## Step 3c — Closing the session
+
+Close the session per [SKILL.md](../SKILL.md) Step 3c (`lamin finish`) — after Step 3b, never before it, since `lamin finish` deletes the run-uid state file that Step 3b reads.

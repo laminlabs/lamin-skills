@@ -79,11 +79,101 @@ Make sure you always do Step 3 at the end of the session, even if the user doesn
 
 ## Step 3 — End of session
 
-User confirmation is not required. Always do Step 3. **Run the commands below exactly as shown — do not skip this step, and do not consider the task done until `lamin finish` has actually been run.**
+User confirmation is not required. Always do Step 3. It has three parts that must happen in this order: attach output files you created directly (3a), clean up the superseded transform versions you created (3b), then close the session (3c). **Run the commands below exactly as shown — do not skip a part, and do not consider the task done until `lamin finish` has actually been run.** 3b is the one part that asks the user anything, because it is the one part that removes records; a declined or unanswered question there skips the cleanup and continues to 3c rather than stopping the session.
+
+### Step 3a — Attach output files you created directly
 
 If you created output files directly (no script involved), attach them first — see your harness's reference file for the exact command to resolve your run and attach files to it.
 
-Then close the session — run this exact command, as its own tool call (no `cd` needed — it resolves the dev-dir internally, the same as Step 1's `lamin track <agent>`):
+### Step 3b — Clean up the superseded transform versions you created
+
+Iterating on a script leaves a trail behind: each time a tracked script's source code changes and it runs again, lamindb makes a **new** Transform version (same `stem_uid`, incremented `uid` suffix) and demotes the previous one to `is_latest=False` — notebooks bump a version on every re-run. Only the newest version is what you actually delivered, so a script you rewrote five times leaves four dead versions, each with its own Run, and the user's registry turns into a junk drawer. Clear out the ones **you** superseded in this session.
+
+Cleaning up is two moves and the order matters: first repair the lineage of any artifact still attributed to a run you're about to remove, then trash the superseded versions along with the outputs that only they produced.
+
+The first move is needed because lamindb deduplicates artifacts by hash. When a later version of your script writes the same content again, `Artifact()` returns the **existing** record rather than creating a new one, leaves `artifact.run` pointing at the run that created it *first*, and appends the later run to `artifact.recreating_runs`. So the artifact you just "re-created" is still attributed to your earliest, throwaway iteration. Move `artifact.run` forward to the newest surviving run that re-created it before that early run disappears — otherwise you trash the run a live artifact is attributed to and leave the lineage worse than you found it.
+
+**Nothing here happens without the user's approval.** This is the one part of Step 3 that removes things, so it runs as plan, then ask, then apply. Run the command below **before** `lamin finish`, which deletes the run-uid state file it needs. The only per-harness part is that state file's path — take it from your harness's reference file and substitute it below; run the rest exactly as shown, no `cd` needed:
+
+```bash
+uv run --with lamindb python -c "
+import os
+import lamindb as ln
+from pathlib import Path
+
+apply = os.environ.get('LAMIN_CLEANUP_APPLY') == '1'
+run = ln.Run.get(uid=Path('<your harness run-uid state file>').read_text().strip())
+child_transform_ids = list(ln.Run.filter(initiated_by_run=run).values_list('transform_id', flat=True))
+superseded = [
+    transform
+    for transform in ln.Transform.filter(id__in=child_transform_ids, is_latest=False)
+    if transform.created_at >= run.started_at  # older versions were not written by you
+]
+superseded_run_ids = list(ln.Run.filter(transform__in=superseded).values_list('id', flat=True))
+for transform in superseded:
+    repoints, blockers = [], []
+    for artifact in ln.Artifact.filter(run__transform_id=transform.id, is_latest=True):
+        surviving_run = artifact.recreating_runs.exclude(id__in=superseded_run_ids).order_by('-started_at').first()
+        if surviving_run is None:
+            blockers.append(artifact)
+        else:
+            repoints.append((artifact, surviving_run))
+    if blockers:
+        print(f'keep {transform.uid} ({transform.key}): {len(blockers)} current artifact(s) still attributed to its runs')
+        continue
+    for artifact, surviving_run in repoints:
+        print(f're-point {artifact.uid} ({artifact.key}).run -> surviving run {surviving_run.uid}')
+        if apply:
+            ln.Artifact.objects.filter(id=artifact.id).update(run_id=surviving_run.id)
+            artifact.recreating_runs.remove(surviving_run)
+    for artifact in ln.Artifact.filter(run__transform_id=transform.id, is_latest=False):
+        if artifact.input_of_runs.exists() or artifact.collections.exists():
+            print(f'keep artifact {artifact.uid}: still referenced elsewhere')
+            continue
+        print(f'trash superseded artifact {artifact.uid} ({artifact.key})')
+        if apply:
+            artifact.delete(storage=False)
+    print(f'trash superseded {transform.uid} ({transform.key}) and its {ln.Run.filter(transform=transform).count()} run(s)')
+    if apply:
+        ln.Run.filter(transform=transform).delete()
+        transform.delete()
+print('--- applied' if apply else '--- plan only, nothing changed yet')
+```
+
+As written, that command **changes nothing** — every mutation sits behind `if apply`, and `apply` is only true when `LAMIN_CLEANUP_APPLY=1` is set. So run it plain first to get the plan.
+
+If it lists nothing to re-point or trash, you're done: say so briefly and move to Step 3c without asking anything. There is no point putting a confirmation prompt in front of a no-op.
+
+Otherwise, show the user what it printed and ask a single yes/no question — "Clean up these superseded transform versions?". **If your harness has a dedicated clarifying-question or ask-user tool, you must use it**, exactly as in Step 1's tracking question; fall back to plain response text only if no such tool exists. Wait for a real answer. Then:
+
+- **Approved** → re-run the *identical* command with the flag prepended, and nothing else changed: `LAMIN_CLEANUP_APPLY=1 uv run --with lamindb python -c "..."`.
+- **Declined, or no clear answer** → skip the cleanup entirely and go straight to Step 3c. **A confirmation that never arrives must never strand the session.** Leaving some clutter behind costs nothing; leaving the run open with no report because you sat waiting on an answer is the one genuinely bad outcome of this step.
+
+Run it twice rather than writing a separate read-only variant. Both passes execute the same selection over the same data, so the plan the user approves is the work that actually happens — a hand-written "preview" version drifts from the real one and starts describing deletions that differ from what lands.
+
+Details that are easy to get wrong, so change nothing here:
+
+- The re-point is a direct field update rather than `artifact.run = surviving_run; artifact.save()` on purpose. `Artifact.save()` carries the full storage path, upload, and validation machinery, none of which should fire when all you're correcting is one foreign key.
+- `recreating_runs.remove(surviving_run)` preserves lamindb's own invariant that a run is either the creator (`artifact.run`) or a re-creator, never both — the same invariant `populate_subsequent_run` maintains.
+- `surviving_run` must exclude the runs about to be trashed, or the artifact gets re-pointed at another doomed run and nothing is gained.
+- Re-pointing happens only for transforms that are actually being trashed, which is why it sits after the `blockers` check rather than before it. `artifact.run` means "the run that first created this", and overriding that convention is justified only because the run in question is about to disappear. A transform that survives keeps its attribution untouched.
+- Only artifacts that are the latest version of their family get re-pointed. An artifact that was itself superseded belongs with the run that made it; both are historical and go quiet together, which is what the second inner loop does — leave those artifacts live and you strand them in the UI pointing at a run in the trash, the same defect the re-point exists to prevent.
+- `artifact.delete(storage=False)` trashes the record and deliberately leaves the stored file alone. The `storage=False` is not decoration: without it, `delete()` fast-fails with an `IntegrityError` on any artifact whose storage location is managed by a different instance. Never pass `storage=True` or `permanent=True` — a superseded *file* artifact owns its own object in storage, but for a folder artifact (`overwrite_versions=True`) every version shares one store, so deleting data here can take out versions you never looked at.
+- The `input_of_runs` / `collections` check is what stops this from creating the very problem it set out to fix. An old version that something else still consumes stays live; trash it and you leave a live run or collection referencing a record in the trash.
+
+Every deletion here moves records to the **trash** (`branch_id = -1`), which is what a bare `.delete()` does — they drop out of queries and the UI, and the user can `.restore()` any of them. **Never add `permanent=True` here.** Neither version history nor data is yours to destroy irreversibly on an automated step, and permanent deletion of a run would additionally fail outright while any Artifact still points at it, since `Artifact.run` is a protected foreign key.
+
+Every filter is load-bearing and must stay exactly as written:
+
+- Restricting to transforms that have a Run initiated by *your* run, and to those created after your run started, is what keeps this to versions **you** wrote in this session. A version a human authored, or one left behind by an earlier or someone else's session, is not yours to clean up — even though it is tempting to sweep those too, you cannot tell from the database whether it is abandoned or the state someone is deliberately working from.
+- Splitting the current artifacts into `repoints` and `blockers` *before* touching anything is what lets one command serve as both plan and apply. A `blockers` entry is a current artifact that no surviving run re-created, so its attribution cannot be moved and the transform has to stay. Re-deriving that decision by re-querying after the re-point would make the plan pass and the apply pass disagree: on the plan pass nothing has moved yet, so it would report keeping transforms that the apply pass goes on to trash.
+- Every `.filter()` call excludes already-trashed records, which keeps this non-interactive: `.delete()` on a record that is *already* in the trash prompts for confirmation and would hang.
+
+**Never widen this into `ln.Transform.filter(is_latest=False).delete()`**, and never drop a filter to make the command "actually do something" — that trashes every version family on the instance, including work no agent ever touched. Printing nothing at all is a normal, successful result: it means you didn't supersede a script this session and there is nothing to clean up.
+
+### Step 3c — Close the session
+
+Run this exact command, as its own tool call (no `cd` needed — it resolves the dev-dir internally, the same as Step 1's `lamin track <agent>`):
 ```bash
 lamin finish
 ```
