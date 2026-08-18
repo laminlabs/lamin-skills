@@ -18,6 +18,7 @@ Official LaminDB skill to write code with best practices, keeping up to date wit
 - **run.report**: rendered HTML of the transcript, saved as an Artifact and linked to the agent run.
 - **Artifact**: data only — output files (csv, txt, images, fasta, etc.). A script's own `ln.Artifact(path).save()` calls (no `run=` needed) auto-attach to that script's own run. Only files you create directly, with no script involved, get attached to the agent run manually.
 - **Always pass a meaningful `key`** when saving an Artifact — a stable, path-like name (e.g. `key="datasets/ataqseq_counts.csv"`), not left unset. Without a key, an Artifact can never be versioned against future updates to the same data. Only reuse the exact same key when a new save is genuinely a new version of that same dataset; use a distinct key otherwise, or unrelated saves will incorrectly get grouped into one version family.
+- **Create artifacts from in-memory objects when possible**: Prefer `ln.Artifact.from_*()` over writing objects to disk and then calling `ln.Artifact(path).save()`. For example, use `ln.Artifact.from_anndata()` for `AnnData` and `ln.Artifact.from_dataframe()` for pandas `DataFrame`. **Do not use `df.to_csv(...)` (or similar) as an intermediate step if a matching `from_*` constructor exists**. Use path-based `ln.Artifact(path).save()` only when the output is genuinely file-native (e.g. image, FASTA, binary export, or a format without a `from_*` helper). If you're unsure whether a `from_*` helper exists for an object type, run `help(ln.Artifact)` to inspect supported constructors.
 - **When a script needs data that an earlier script in this workflow already produced, retrieve it from LaminDB — never read the local file path directly.** Use `ln.Artifact.get(key="...")` (the same key it was saved under) followed by `.load()`; this is what registers that artifact as this run's input and forms the lineage edge between the two scripts. Reading the file straight off disk produces the same result but leaves LaminDB with no record that the two scripts are connected, silently breaking the workflow's lineage graph.
 
 ## Self-tracking scripts and notebooks
@@ -28,10 +29,14 @@ Every script or notebook you write to do the user's actual task must instrument 
 import lamindb as ln
 ln.track()
 # if this step consumes an earlier step's output, retrieve it — never read the local file path directly:
-# input_artifact = ln.Artifact.get(key="<key used when it was saved>")
-# df = input_artifact.load()  # registers it as this run's input, forming the lineage edge
-# ... the actual task ...
-ln.Artifact("output.csv", key="<meaningful/folder/path>/output.csv", description="...").save()  # no run= needed, auto-attaches
+input_artifact = ln.Artifact.get(key="<key used when it was saved>")
+df = input_artifact.load()  # registers it as this run's input, forming the lineage edge
+# ... the actual task ... e.g. process_data(df)
+# for in-memory objects, prefer from_* constructors (no to_csv/to_parquet/any other intermediate write)
+artifact = ln.Artifact.from_dataframe(df, key="<meaningful/folder/path>/output.csv", description="...")
+artifact.save()
+# use path-based save only for genuinely file-native outputs:
+ln.Artifact("figure.png", key="<meaningful/folder/path>/figure.png", description="...").save()
 ln.finish()
 ```
 
@@ -73,9 +78,55 @@ Every script you write to do the task — the first one and every later one, on 
 
 For any script that's written, its inputs should not be local; they must be lamindb artifacts. If an input is available locally, it must be uploaded to lamindb as an artifact before running the script and adding the run to lamin. If any script was run or code was generated within the session to create that input, this script or code should also be added to lamin.
 
+For EVERY python script that you plan to run, whether it was created/modified by you in the session or already existed, whether its run directly or indirectly, we want to verify that it insures proper lineage in lamindb before running it — if it does not, we will need to modify it to do so before running it. User confirmation is not required before doing this. This needs to be run without fail. If you can't run this, quit the session. **Hard gate: never run a script unless the most recent `verify_lineage(script_path)` result for that exact file prints `Lineage is fully tracked`. If it prints any `Missing lineage: ...`, do not run the script; modify it and repeat `verify_lineage` until it passes based on the 'Lineage remediation retry policy' section below. Never stop after the first failed fix attempt unless blocked by tool/runtime failure; you must complete up to 2 remediation iterations first.** 
+
+You can verify lineage by using the code below. The `script_path` variable should be set to the path of the script you are verifying. Run it the same way you'd normally run Python in this project — same tool, same environment; escalate to `uv run --with lamindb python -c "..."` only if that errors (non-zero exit status), and only then:
+```python
+from lamindb.core import verify_lineage
+result = verify_lineage(script_path)
+
+if result.is_fully_tracked:
+  print(f"Lineage is fully tracked")
+else:
+  print(f"Missing lineage: {result.missing_lineage}")
+
+```
+
 Mentally note only the files you create or modify **directly, with no script involved** — those need manual attachment before finishing (see Step 3, and your harness's reference file for how to resolve your run).
 
 Make sure you always do Step 3 at the end of the session, even if the user doesn't ask.
+
+### Lineage remediation retry policy (mandatory)
+
+When `verify_lineage(script_path)` fails for a script that is intended to run:
+
+1. Attempt to fix the script and rerun `verify_lineage(script_path)`.
+2. If it still fails, attempt one more fix and rerun `verify_lineage(script_path)` again.
+3. Maximum remediation attempts: **2**.
+
+After 2 failed remediation attempts:
+
+- **Do not run the script.**
+- Ask the user for guidance or a manual fix using the interactive ask-user tool (when available).
+- Report both failed verify outputs and the exact remaining `missing_lineage` items.
+
+Hard gate remains: only run when the **most recent** verify result for that exact file is `Lineage is fully tracked`.
+
+### Lineage remediation guardrails
+
+When fixing a script after `verify_lineage(script_path)` reports missing lineage, preserve script behavior and only add lineage tracking.
+
+Non-negotiable rule:
+
+- **Do not delete, comment out, or bypass file/folder path usage just to make verification pass. Only do it if overall script behavior can be preserved.**
+
+Allowed direction:
+
+- Add or adjust lineage instrumentation (`ln.track`, `ln.finish`, `ln.Artifact.get(...).load()`, `ln.Artifact(...).save()` or `ln.Artifact.from_*().save()`). Run `help(ln.Artifact)` for help with finding other methods for tracking artifacts in lamindb.
+
+If lineage cannot be fixed without changing what the script does, stop and ask the user for guidance.
+
+
 
 ## Step 3 — End of session
 
