@@ -2,7 +2,7 @@
 
 See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers only what's specific to Copilot.
 
-**Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — [SKILL.md](../SKILL.md)'s Step 1 (`lamin settings dev-dir get`) first, then [SKILL.md](../SKILL.md)'s ask-the-user step, then Step 1 here, then the script/notebook command each time you run one, and Step 3 at the end. **You must actually run that dev-dir command — never assume it equals the current working directory, even if that seems obvious.** Don't skip a step because the task seems simple. If the user declined tracking at the ask-the-user step, stop here — there's nothing further to run, including Step 3. Otherwise, don't consider it finished until Step 3's `lamin finish` has actually run.
+**Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — [SKILL.md](../SKILL.md)'s Step 1 (`lamin settings dev-dir get`) first, then [SKILL.md](../SKILL.md)'s ask-the-user step, then Step 1 here, then the script/notebook command each time you run one, and Steps 3a, 3b, 3c in that order at the end. **You must actually run that dev-dir command — never assume it equals the current working directory, even if that seems obvious.** Don't skip a step because the task seems simple. If the user declined tracking at the ask-the-user step, stop here — there's nothing further to run, including Step 3. Otherwise, don't consider it finished until Step 3c's `lamin finish` has actually run.
 
 ## Step 1 — Start of session
 
@@ -41,7 +41,7 @@ Escalate to the fallback below only if this command errors (non-zero exit status
 printf 'y\n' | LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copilot_${COPILOT_AGENT_SESSION_ID}") uv run --with lamindb python script.py
 ```
 
-## Step 3 — Attaching direct output files
+## Step 3a — Attaching direct output files
 
 If you created output files directly (no script involved), attach them. No `cd` needed for this one — just build the path directly using the dev-dir resolved in [SKILL.md](../SKILL.md)'s Step 1, if any (otherwise use the plain relative path shown). Run this the same way you'd normally run Python in this project — same tool, same environment:
 ```bash
@@ -64,4 +64,16 @@ ln.Artifact('output.csv', key='<meaningful/folder/path>/output.csv', description
 "
 ```
 
-Then run [SKILL.md](../SKILL.md)'s Step 3 closing command (`lamin finish`) as its own tool call — it reads `$COPILOT_AGENT_SESSION_ID` from its own environment the same way Step 1 did. Don't stop after just writing/running the user's script.
+## Step 3b — Cleaning up superseded transform versions
+
+Run [SKILL.md](../SKILL.md)'s Step 3b command — first as the plan, then, once the user approves, again with `LAMIN_CLEANUP_APPLY=1` — with this path substituted for `<your harness run-uid state file>` in both passes. It's the same file Step 1 wrote, built from the dev-dir resolved in [SKILL.md](../SKILL.md)'s Step 1, if any (otherwise the plain relative path):
+
+```
+<dev-dir, if any>/.copilot/.lamindb_run_uid_copilot_${COPILOT_AGENT_SESSION_ID}
+```
+
+`$COPILOT_AGENT_SESSION_ID` expands inside the `python -c` string because the surrounding shell quoting is double quotes — leave it as the variable rather than pasting a literal session id.
+
+## Step 3c — Closing the session
+
+Run [SKILL.md](../SKILL.md)'s Step 3c closing command (`lamin finish`) as its own tool call — it reads `$COPILOT_AGENT_SESSION_ID` from its own environment the same way Step 1 did. Run it *after* Step 3b, never before, since it deletes the run-uid state file that Step 3b reads. Don't stop after just writing/running the user's script.
