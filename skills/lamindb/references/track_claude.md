@@ -37,7 +37,17 @@ printf 'y\n' | LAMIN_INITIATED_BY_RUN_UID=$(cat .claude/.lamindb_run_uid_${CLAUD
 
 ## Step 3a — Attaching direct output files
 
-If you created output files directly (no script involved), no `cd` needed for this one — just build the path directly using the dev-dir resolved in [SKILL.md](../SKILL.md)'s Step 1, if any (otherwise use the plain relative path shown):
+If you created output files directly (no script involved), no `cd` needed for this one — just build the path directly using the dev-dir resolved in [SKILL.md](../SKILL.md)'s Step 1, if any (otherwise use the plain relative path shown). Run this the same way you'd normally run Python in this project — same tool, same environment:
+```bash
+python3 -c "
+import lamindb as ln
+from pathlib import Path
+run = ln.Run.get(uid=Path('<dev-dir, if any>/.claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}').read_text().strip())
+ln.Artifact('output.csv', key='<meaningful/folder/path>/output.csv', description='<what it is>', run=run).save()
+# repeat for each direct file
+"
+```
+Escalate to the fallback below only if this command errors (non-zero exit status) — regardless of the specific reason (wrong interpreter name, missing lamindb, anything else). Under no other circumstance should you run any additional command before or instead of accepting this result:
 ```bash
 uv run --with lamindb python -c "
 import lamindb as ln
