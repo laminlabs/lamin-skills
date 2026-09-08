@@ -21,7 +21,7 @@ else
 fi
 ```
 
-This reads Copilot's own `$COPILOT_AGENT_SESSION_ID` (set in every tool call's environment, the same idea as `$CLAUDE_CODE_SESSION_ID` for Claude Code) and writes `.copilot/.lamindb_run_uid_copilot_${COPILOT_AGENT_SESSION_ID}` — safe for parallel sessions in the same directory, since each gets its own uniquely suffixed file. If a dev-dir is configured, this lives there instead of cwd, so `lamin finish` finds it consistently regardless of which directory it's invoked from.
+This reads Copilot's own `$COPILOT_AGENT_SESSION_ID` (set in every tool call's environment, the same idea as `$CLAUDE_CODE_SESSION_ID` for Claude Code) and writes `.copilot/.lamindb_run_uid_copilot_${COPILOT_AGENT_SESSION_ID}` — safe for parallel sessions in the same directory, since each gets its own uniquely suffixed file. If a dev-dir is configured, this lives there instead of cwd, so `lamin finish` finds it consistently regardless of which directory it's invoked from. Repeating this command for a follow-up in the same Copilot conversation resumes its existing Run; it does not create another Run.
 
 You don't need to remember anything from this command's output — every later command below reads `$COPILOT_AGENT_SESSION_ID` from its own environment directly, the same way this one did.
 
@@ -64,4 +64,4 @@ ln.Artifact('output.csv', key='<meaningful/folder/path>/output.csv', description
 "
 ```
 
-Then run [SKILL.md](../SKILL.md)'s Step 3 closing command (`lamin finish`) as its own tool call — it reads `$COPILOT_AGENT_SESSION_ID` from its own environment the same way Step 1 did. Don't stop after just writing/running the user's script.
+Then run [SKILL.md](../SKILL.md)'s Step 3 closing command (`lamin finish`) as its own tool call — it reads `$COPILOT_AGENT_SESSION_ID` from its own environment the same way Step 1 did. A later finish in the same Copilot conversation updates this Run's report and cumulative metrics. Don't stop after just writing/running the user's script.
