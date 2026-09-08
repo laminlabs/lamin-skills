@@ -68,6 +68,12 @@ If the output is the literal string `None`, this instance has no dev-dir configu
 
 Determine which coding agent you are running as and follow the matching file under Quick reference below.
 
+Before starting tracking or doing the user's task, create and switch to a new LaminDB branch:
+```bash
+lamin switch -c <task-specific-branch-name>
+```
+Choose a concise, unique name derived from the task. Create the branch exactly once per agent session; keep using it for follow-up messages in the same session. Never do the user's work on `main`, and do not merge or delete the branch automatically. If branch creation fails, tell the user and do not silently continue on `main`.
+
 Before running the tracking command, ask the user a single yes/no question — "Should this session be tracked in LaminDB?". **If your harness has a dedicated clarifying-question or ask-user tool, you must use it — do not fall back to plain response text when a real interactive mechanism is available.** Only ask directly in your response text if no such tool exists at all. **This is a blocking question: stop and wait for the user's actual reply before doing anything else.** Do not assume an answer, do not phrase it as "I'll proceed unless you say no," and do not continue in the same turn — treat it exactly like any other question you'd wait for a real answer to. Ask this once, at the very start of the session, regardless of how obviously code-related the task seems — every session, no exceptions in either direction. If the user declines, do not run `lamin track <agent>` or attempt Step 2/3 for the rest of the session — there's no run to attach anything to. Only once the user has explicitly replied yes (or an equivalent affirmative), proceed with the command below.
 
 Each starts tracking with `lamin track <agent>`, which creates (or reuses) that harness's fixed Transform and opens a Run — see your reference file for the exact command and what it writes. **Run the exact command shown in your reference file as its own tool call — do not write your own tracking logic instead, do not add any other command alongside it, and do not skip straight to the user's task without running it first.** If tracking isn't available (`lamin` not found, or the command errors — e.g. no lamindb instance connected): tell the user tracking isn't available and proceed with their actual task untracked. Do not attempt Step 2/3 for the rest of the session — there's no run to attach anything to.
