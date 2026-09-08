@@ -43,25 +43,10 @@ printf 'y\n' | LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copil
 
 ## Step 3 — Attaching direct output files
 
-If you created output files directly (no script involved), attach them. No `cd` needed for this one — just build the path directly using the dev-dir resolved in [SKILL.md](../SKILL.md)'s Step 1, if any (otherwise use the plain relative path shown). Run this the same way you'd normally run Python in this project — same tool, same environment:
+If you created output files directly (no script involved), attach each one to the active Copilot session. No `cd` is needed — pass the full path using the dev-dir resolved in [SKILL.md](../SKILL.md)'s Step 1, if any (otherwise use the plain relative path shown):
 ```bash
-python3 -c "
-import lamindb as ln
-from pathlib import Path
-run = ln.Run.get(uid=Path('<dev-dir, if any>/.copilot/.lamindb_run_uid_copilot_${COPILOT_AGENT_SESSION_ID}').read_text().strip())
-ln.Artifact('output.csv', key='<meaningful/folder/path>/output.csv', description='<what it is>', run=run).save()
-# repeat for each direct file
-"
+lamin track artifact '<dev-dir, if any>/output.csv' --key '<meaningful/folder/path>/output.csv' --description '<what it is>'
 ```
-Escalate to the fallback below only if this command errors (non-zero exit status) — regardless of the specific reason (wrong interpreter name, missing lamindb, anything else). Under no other circumstance should you run any additional command before or instead of accepting this result:
-```bash
-uv run --with lamindb python -c "
-import lamindb as ln
-from pathlib import Path
-run = ln.Run.get(uid=Path('<dev-dir, if any>/.copilot/.lamindb_run_uid_copilot_${COPILOT_AGENT_SESSION_ID}').read_text().strip())
-ln.Artifact('output.csv', key='<meaningful/folder/path>/output.csv', description='<what it is>', run=run).save()
-# repeat for each direct file
-"
-```
+Repeat this command for each direct output file. It resolves `$COPILOT_AGENT_SESSION_ID` and attaches the artifact to the existing session Run; do not read the Run UID state file or write custom Python for this.
 
 Then run [SKILL.md](../SKILL.md)'s Step 3 closing command (`lamin finish`) as its own tool call — it reads `$COPILOT_AGENT_SESSION_ID` from its own environment the same way Step 1 did. A later finish in the same Copilot conversation updates this Run's report and cumulative metrics. Don't stop after just writing/running the user's script.
