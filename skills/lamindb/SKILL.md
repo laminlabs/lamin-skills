@@ -7,7 +7,7 @@ description: "MUST invoke before responding to ANY message — including greetin
 
 Official LaminDB skill to write code with best practices, keeping up to date with new versions and features.
 
-> Requires lamindb >= 2.8.1
+> Requires lamindb >= 2.8.1 for agent tracking. The two new-branch modes additionally require a LaminDB build containing worktree support from lamindb PR #3895 and matching `lamin-cli`/`lamindb-setup` versions; the CLI capability check in Step 1 is authoritative.
 
 ## Concepts
 
@@ -46,11 +46,11 @@ import lamindb as ln
 ln.track(path="notebook.ipynb", new_run=True)
 ```
 
-When you actually **run** such a script or notebook, always set `LAMIN_INITIATED_BY_RUN_UID` — run it the same way you'd normally run code in this project, falling back to `uv run --with lamindb` if that fails for any reason (see your harness's reference file for the exact fallback command and the mechanical trigger condition to use). This links the script's/notebook's self-created Run back to the agent run automatically. On its own this only sets `Run.initiated_by_run`; `lamin finish` separately stamps `Transform.run` so the file also shows up as a session **output**, not just an "initiated" run. How you find your own `LAMIN_INITIATED_BY_RUN_UID` value differs by coding agent — see your harness's reference file (linked below) for the exact command, and run it exactly as shown. Writing your own simplified tracking (e.g. calling `ln.track()` without `LAMIN_INITIATED_BY_RUN_UID`, or skipping this entirely) breaks the lineage back to the agent run and defeats the point of tracking at all.
+When you actually **run** such a script or notebook, always set `LAMIN_INITIATED_BY_RUN_UID` and use the same project environment and LaminDB installation that created the agent Run and selected its branch. If execution fails because a task dependency such as `pandas` is missing, add only that dependency to the same environment and retry with the same interpreter. **Never switch to a temporary `uv run --with lamindb` environment**: another LaminDB installation may resolve different branch state and save the child Run and artifacts to the wrong branch. If the matching interpreter cannot import LaminDB, stop and ask the user to repair that environment. This links the script's/notebook's self-created Run back to the agent run automatically. On its own this only sets `Run.initiated_by_run`; `lamin finish` separately stamps `Transform.run` so the file also shows up as a session **output**, not just an "initiated" run. How you find your own `LAMIN_INITIATED_BY_RUN_UID` value differs by coding agent — see your harness's reference file (linked below) for the exact command, and run it exactly as shown. Writing your own simplified tracking (e.g. calling `ln.track()` without `LAMIN_INITIATED_BY_RUN_UID`, or skipping this entirely) breaks the lineage back to the agent run and defeats the point of tracking at all.
 
 ## Step 1 — Start of session (before the user's actual task)
 
-First, resolve whether this instance has a configured development directory. This matters for one specific reason: when you later run a self-tracking script, lamindb derives that script's own Transform key from the directory it actually executes in — so the script needs to run from the dev-dir for that key to be stable, and lamindb has no other way to know where that is.
+First, resolve whether this instance has a configured development directory. This is the **base dev-dir**. When worktree mode is enabled, it is the parent of the branch directories rather than the directory where task commands run.
 ```bash
 lamin settings dev-dir get
 ```
@@ -64,15 +64,74 @@ else
   "$LAMIN_BIN" settings dev-dir get
 fi
 ```
-If the output is the literal string `None`, this instance has no dev-dir configured — nothing further to do here. Otherwise, remember the printed path exactly as shown for later — you'll need it when running self-tracking scripts (see your harness's reference file for the exact command). `lamin track <agent>` and `lamin finish` already resolve the dev-dir internally, so neither needs a `cd` prefix; script execution is the one place that does, since that's where the actual working directory affects lamindb's own behavior. Don't rely on a shell variable to carry the path forward — each tool call may run in a fresh subprocess, so type the literal path again when you need it.
+If the output is not the literal string `None`, remember the printed path exactly as the base dev-dir. Don't rely on a shell variable to carry it forward — each tool call may run in a fresh subprocess, so type the literal path again when needed.
+
+Next, read the current worktree setting:
+```bash
+lamin settings worktree get
+```
+Use the same `LAMIN_BIN` fallback pattern above only if this command errors. If both attempts fail because the installed CLI does not support worktree settings, tell the user that the two new-branch choices require a newer LaminDB CLI; the current-branch and do-not-track choices remain available.
 
 Determine which coding agent you are running as and follow the matching file under Quick reference below.
 
-Before running the tracking command, ask the user a single yes/no question — "Should this session be tracked in LaminDB?". **If your harness has a dedicated clarifying-question or ask-user tool, you must use it — do not fall back to plain response text when a real interactive mechanism is available.** Only ask directly in your response text if no such tool exists at all. **This is a blocking question: stop and wait for the user's actual reply before doing anything else.** Do not assume an answer, do not phrase it as "I'll proceed unless you say no," and do not continue in the same turn — treat it exactly like any other question you'd wait for a real answer to. Ask this once, at the very start of the session, regardless of how obviously code-related the task seems — every session, no exceptions in either direction. If the user declines, do not run `lamin track <agent>` or attempt Step 2/3 for the rest of the session — there's no run to attach anything to. Only once the user has explicitly replied yes (or an equivalent affirmative), proceed with the command below.
+Before running the tracking command or doing the user's task, ask one blocking interactive question using this exact single sentence: **"Choose how to track this session in LaminDB, or type `Do not track` in the custom answer field."** Do not shorten or split the question. Use exactly these three short clickable labels, without appending explanations to them:
 
-For a follow-up prompt in the same harness conversation after Step 3 already completed, do not ask for consent again. Run the same `lamin track <agent>` command again before doing the follow-up work. The CLI uses the harness session ID to resume the existing agent Run and restores the active UID file needed for child-run lineage.
+1. **Track on new branch (parallel agents) (Recommended)**
+2. **Track on new branch (single agent)**
+3. **Track on current branch**
 
-Each starts tracking with `lamin track <agent>`, which creates (or reuses) that harness's fixed Transform and opens a Run — see your reference file for the exact command and what it writes. **Run the exact command shown in your reference file as its own tool call — do not write your own tracking logic instead, do not add any other command alongside it, and do not skip straight to the user's task without running it first.** If tracking isn't available (`lamin` not found, or the command errors — e.g. no lamindb instance connected): tell the user tracking isn't available and proceed with their actual task untracked. Do not attempt Step 2/3 for the rest of the session — there's no run to attach anything to.
+Pass the options to the interactive tool in exactly this order. Explicitly mark the first option as recommended and make it the initially selected/default option whenever the tool supports a default. Never default to the second or third option. The first choice enables an isolated branch directory. The second leaves worktree mode off and is only safe for one agent session at a time. The third preserves the current branch and worktree setting. Treat a custom answer equal to `Do not track` (case-insensitive) as the fourth mode; it preserves all LaminDB settings and branch state and does no tracking.
+
+**If your harness has a dedicated clarifying-question or ask-user tool, you must use it.** Only ask directly in response text if no such tool exists. Stop and wait for the user's actual selection; do not assume one or continue in the same turn. Show this selection dialogue once at the start and never repeat it on a normal follow-up. Only ask for a corrected selection when the chosen mode fails its stated prerequisite. Once successfully applied, the selection fixes the tracking mode and session working directory for the rest of that conversation.
+
+If the user selects **Do not track**, do not change worktree mode, create or switch a branch, run `lamin track`, or attempt Step 2/3 for the rest of the conversation. Continue the actual task normally.
+
+### Resolve the session working directory
+
+For **Track on new branch (parallel agents)**, a base dev-dir is required. If it is `None`, explain that an isolated branch requires a configured dev-dir and ask the user to configure one or choose another option. Otherwise:
+
+1. Enable worktree mode with `lamin settings worktree set true` and require a successful exit.
+2. Choose a concise branch name in the form `<meaningful-task-slug>-<session-id-suffix>`. The task slug must describe the user's actual task; never use a generic name such as `session`, `task`, or `branch`. Derive the suffix from the current harness session ID as specified in its reference file; never derive uniqueness from the current time alone. Use only letters, digits, hyphens, or underscores, and never `/`.
+3. From the base dev-dir, run `lamin switch -c <branch-name>` and require a successful exit. Do not silently continue on the current branch if creation fails.
+4. Set the **session working directory** to the literal path `<base-dev-dir>/<branch-name>` and verify that directory exists.
+
+For **Track on new branch (single agent)**:
+
+1. Warn through the choice description that this mode permits only one agent session at a time.
+2. Immediately rerun `lamin settings worktree get` and require the result to be `false`; do not rely only on the value read before the dialogue because another session may have changed it. Do not disable worktree mode automatically because another active agent may depend on it. If it is `true`, explain the conflict and ask the user to choose again.
+3. Choose a concise branch name in the same `<meaningful-task-slug>-<session-id-suffix>` form required for parallel mode. Never use a generic or timestamp-only branch name, and never include `/`.
+4. Run `lamin switch -c <branch-name>` and require a successful exit. Do not silently continue on the current branch if creation fails.
+5. **No physical branch directory is created in this mode.** Do not look for, create, or enter `<base-dev-dir>/<branch-name>`, and never append the branch name to any filesystem path.
+6. Set the session working directory to the base dev-dir when configured, otherwise to the original working directory. Run `lamin track`, all task commands, and `lamin finish` directly from that same directory.
+
+For **Track on current branch**, do not call `lamin settings worktree set` or `lamin switch`. Preserve the exact branch context in which the session started. Resolve the effective dev-dir from the original working directory with:
+```bash
+<matching-python-executable> -c "from lamindb_setup import settings; print(settings.effective_dev_dir)"
+```
+`<matching-python-executable>` means the Python executable from the exact environment that provides the `lamin` executable being used; for `/path/to/env/bin/lamin`, use `/path/to/env/bin/python`. Do not create or use a temporary environment for this lookup. If the command errors because that matching environment cannot import LaminDB, explain the problem and ask the user to repair that environment or choose **Do not track**. If it prints a path, use that literal path as the session working directory. If it prints `None`, use the original working directory. If it reports that the current path is not a valid branch directory while worktree mode is enabled, do not guess a branch or silently fall back to the base dev-dir; explain the error and ask the user to enter a branch-dir or choose a new-branch option.
+
+Only if the task actually requires the current LaminDB branch name, read it with the same project interpreter and settings context:
+```bash
+<matching-python-executable> -c "from lamindb_setup import settings; print(settings.branch.name)"
+```
+There is no `lamin settings branch get` command. Do not invent or probe for alternate branch commands, and do not inspect the database merely to reconfirm the branch.
+
+The session working directory is immutable after it is resolved. `lamin switch` cannot change the parent agent process's working directory. Therefore, **run every later LaminDB command and every task command from the session working directory**, using the execution tool's working-directory option when available or an explicit `cd "<session-working-dir>" &&` prefix otherwise. This includes `lamin track`, lineage verification, scripts and notebooks, direct-output attachment, tests, and `lamin finish`. Never run task commands from the base dev-dir after selecting an isolated worktree branch.
+
+### Command hygiene
+
+Keep every prescribed command free of diagnostic shell noise. Required working-directory setup (`cd` or the execution tool's working-directory option) and required environment configuration such as `LAMIN_SETTINGS_DIR` are allowed. Do not add any of the following:
+
+- status headings or separators such as `echo "--- dev-dir ---"`;
+- manual exit-code output such as `echo "exit: $?"` or `echo "switch exit: $?"` — rely on the execution tool's reported exit status;
+- commands that print harness session IDs — use the environment variable silently when constructing branch names and state-file paths;
+- convenience aliases such as `LAMIN=...` or `PYBIN=...` — invoke the required `lamin` or matching Python executable directly.
+
+Run `lamin track` and `lamin finish` as standalone substantive commands: do not place another diagnostic or task command before or after either one in the same tool call.
+
+For a follow-up prompt in the same harness conversation after Step 3 completed, do not ask again, change worktree mode, or create/switch another branch. Return to the same session working directory and run the same `lamin track <agent>` command before doing the follow-up work. The CLI uses the harness session ID to resume the existing agent Run and restores the active UID file needed for child-run lineage.
+
+Each tracked mode starts with `lamin track <agent>`, which creates (or reuses) that harness's fixed Transform and opens a Run — see your reference file for the exact command and what it writes. **Run the exact command shown in your reference file from the session working directory as its own tool call — do not write your own tracking logic, add another command alongside it, or skip straight to the user's task.** If tracking isn't available (`lamin` not found, or the command errors — e.g. no lamindb instance connected), tell the user and proceed with their actual task untracked. Do not attempt Step 2/3 for the rest of the conversation because there is no Run to attach anything to. Do not undo a branch or worktree choice merely because tracking failed.
 
 ## Step 2 — During the session
 
@@ -82,7 +141,7 @@ For any script that's written, its inputs should not be local; they must be lami
 
 For EVERY python script that you plan to run, whether it was created/modified by you in the session or already existed, whether its run directly or indirectly, we want to verify that it insures proper lineage in lamindb before running it — if it does not, we will need to modify it to do so before running it. User confirmation is not required before doing this. This needs to be run without fail. If you can't run this, quit the session. **Hard gate: never run a script unless the most recent `verify_lineage(script_path)` result for that exact file prints `Lineage is fully tracked`. If it prints any `Missing lineage: ...`, do not run the script; modify it and repeat `verify_lineage` until it passes based on the 'Lineage remediation retry policy' section below. Never stop after the first failed fix attempt unless blocked by tool/runtime failure; you must complete up to 2 remediation iterations first.** 
 
-You can verify lineage by using the code below. The `script_path` variable should be set to the path of the script you are verifying. Run it the same way you'd normally run Python in this project — same tool, same environment; escalate to `uv run --with lamindb python -c "..."` only if that errors (non-zero exit status), and only then:
+You can verify lineage by using the code below. The `script_path` variable should be set to the path of the script you are verifying. Run it with the same interpreter and LaminDB installation that will execute the script. A missing unrelated task dependency is not a reason to switch LaminDB environments.
 ```python
 from lamindb.core import verify_lineage
 result = verify_lineage(script_path)
@@ -95,6 +154,8 @@ else:
 ```
 
 Mentally note only the files you create or modify **directly, with no script involved** — those need manual attachment before finishing (see Step 3, and your harness's reference file for how to resolve your run).
+
+After a self-tracking script or notebook exits successfully, accept that result. Do not query or load its Transform, Run, or artifacts merely to reconfirm that they were saved, and do not search the filesystem for tracking state. Perform additional inspection only when the execution itself reports an error or when verification is part of the user's actual task rather than a tracking check.
 
 Make sure you always do Step 3 at the end of the session, even if the user doesn't ask.
 
@@ -136,7 +197,7 @@ User confirmation is not required. Always do Step 3. **Run the commands below ex
 
 If you created output files directly (no script involved), attach them first — see your harness's reference file for the exact command to resolve your run and attach files to it.
 
-Then close the session — run this exact command, as its own tool call (no `cd` needed — it resolves the dev-dir internally, the same as Step 1's `lamin track <agent>`):
+Then close the session — run this exact command from the immutable session working directory, as its own tool call:
 ```bash
 lamin finish
 ```
