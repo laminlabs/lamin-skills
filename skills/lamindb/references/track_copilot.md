@@ -2,11 +2,13 @@
 
 See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers only what's specific to Copilot.
 
-**Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — [SKILL.md](../SKILL.md)'s Step 1 (`lamin settings dev-dir get`) first, then [SKILL.md](../SKILL.md)'s ask-the-user step, then Step 1 here, then the script/notebook command each time you run one, and Step 3 at the end. **You must actually run that dev-dir command — never assume it equals the current working directory, even if that seems obvious.** Don't skip a step because the task seems simple. If the user declined tracking at the ask-the-user step, stop here — there's nothing further to run, including Step 3. Otherwise, don't consider it finished until Step 3's `lamin finish` has actually run.
+When shared Step 1 requires a branch-name suffix, use the first 8 alphanumeric characters of `$COPILOT_AGENT_SESSION_ID`. Combine it with an agent-chosen slug that describes the user's task, for example `favorite-protein-fasta-a1b2c3d4`; never use a generic `session-*` name or a timestamp-only suffix.
+
+**Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — [SKILL.md](../SKILL.md)'s Step 1 first, including its branch/worktree choice and session-working-directory resolution, then Step 1 here, then the script/notebook command each time you run one, and Step 3 at the end. Don't skip a step because the task seems simple. If the user selected **Do not track**, stop here — there's nothing further to run, including Step 3. Otherwise, don't consider tracking finished until Step 3's `lamin finish` has actually run.
 
 ## Step 1 — Start of session
 
-Run this now (no `cd` needed — it resolves the dev-dir internally). **`--name` is mandatory — never omit it, never run this command without it:**
+Run this now from the session working directory resolved in [SKILL.md](../SKILL.md)'s Step 1. **`--name` is mandatory — never omit it, never run this command without it:**
 ```bash
 lamin track copilot --name "<one sentence describing this session's task>"
 ```
@@ -21,47 +23,37 @@ else
 fi
 ```
 
-This reads Copilot's own `$COPILOT_AGENT_SESSION_ID` (set in every tool call's environment, the same idea as `$CLAUDE_CODE_SESSION_ID` for Claude Code) and writes `.copilot/.lamindb_run_uid_copilot_${COPILOT_AGENT_SESSION_ID}` — safe for parallel sessions in the same directory, since each gets its own uniquely suffixed file. If a dev-dir is configured, this lives there instead of cwd, so `lamin finish` finds it consistently regardless of which directory it's invoked from. Repeating this command for a follow-up in the same Copilot conversation resumes its existing Run; it does not create another Run.
+This reads Copilot's own `$COPILOT_AGENT_SESSION_ID` and writes `.copilot/.lamindb_run_uid_copilot_${COPILOT_AGENT_SESSION_ID}` under the session working directory. In worktree mode, this keeps each branch's tracking state inside its isolated branch-dir. Repeating this command from the same session working directory for a follow-up in the same Copilot conversation resumes its existing Run; it does not create another Run.
 
 You don't need to remember anything from this command's output — every later command below reads `$COPILOT_AGENT_SESSION_ID` from its own environment directly, the same way this one did.
 
 ## Running self-tracking scripts and notebooks
 
-Run this exact pattern every time you execute a script or notebook — never without this wrapper, and never a hand-rolled `ln.track()` call without it either. Prefix it with `cd "<dev-dir>" &&` using the path resolved in [SKILL.md](../SKILL.md)'s Step 1, if any. **Do not add flags, error-suppression (`2>/dev/null`, `|| true`), or any other modification to the `cat` command — run it exactly as shown.** If the file doesn't exist, let `cat` fail visibly rather than silently substituting an empty value.
+Run this exact pattern from the session working directory every time you execute a script or notebook — never without this wrapper, and never a hand-rolled `ln.track()` call without it either. **Do not add flags, error-suppression (`2>/dev/null`, `|| true`), or any other modification to the `cat` command — run it exactly as shown.** If the file doesn't exist, let `cat` fail visibly rather than silently substituting an empty value.
 
 ```bash
 printf 'y\n' | LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copilot_${COPILOT_AGENT_SESSION_ID}") <however you'd normally run this file>
 ```
 The leading `printf 'y\n' |` auto-answers the "overwrite existing source code?" prompt `ln.track()` shows when a previously-tracked script's content has changed — normal when iterating — otherwise it hangs/crashes waiting for input that will never come.
 
-Run the file itself exactly like you'd run any other script or notebook in this project — same tool, same environment — the only requirement is that `LAMIN_INITIATED_BY_RUN_UID` is set first.
+Run the file with `LAMIN_INITIATED_BY_RUN_UID` set first. **Use the Python interpreter executable from the exact environment that provided the `lamin` executable used to start tracking: `/path/to/env/bin/lamin` requires `/path/to/env/bin/python`. Invoke that Python executable directly.**
 
-Escalate to the fallback below only if this command errors (non-zero exit status) — regardless of the specific reason (wrong interpreter name, missing lamindb, anything else). Under no other circumstance should you run any additional command before or instead of accepting this result. Retry as a separate command via `uv run`:
-```bash
-printf 'y\n' | LAMIN_INITIATED_BY_RUN_UID=$(cat ".copilot/.lamindb_run_uid_copilot_${COPILOT_AGENT_SESSION_ID}") uv run --with lamindb python script.py
-```
+If this command fails because a non-LaminDB task dependency is missing, add only that dependency to the same active project environment and retry with the same interpreter. If LaminDB itself cannot be imported by that interpreter, stop and ask the user to repair the environment. Do not create or switch to a temporary environment: it may resolve different LaminDB settings and save lineage to another branch.
 
 ## Step 3 — Attaching direct output files
 
-If you created output files directly (no script involved), attach them. No `cd` needed for this one — just build the path directly using the dev-dir resolved in [SKILL.md](../SKILL.md)'s Step 1, if any (otherwise use the plain relative path shown). Run this the same way you'd normally run Python in this project — same tool, same environment:
+If you created output files directly (no script involved), attach them from the session working directory. Build the state-file path from that same directory; do not use the base dev-dir when working in a branch-dir. **Invoke the Python interpreter executable directly from the exact environment that provided the `lamin` executable used to start tracking. If tracking used `/path/to/env/bin/lamin`, this command must use `/path/to/env/bin/python`; do not substitute another Python executable or place `lamin` before the Python arguments.**
 ```bash
-python3 -c "
+<matching-python-executable> -c "
 import lamindb as ln
 from pathlib import Path
-run = ln.Run.get(uid=Path('<dev-dir, if any>/.copilot/.lamindb_run_uid_copilot_${COPILOT_AGENT_SESSION_ID}').read_text().strip())
+run = ln.Run.get(uid=Path('.copilot/.lamindb_run_uid_copilot_${COPILOT_AGENT_SESSION_ID}').read_text().strip())
 ln.Artifact('output.csv', key='<meaningful/folder/path>/output.csv', description='<what it is>', run=run).save()
 # repeat for each direct file
 "
 ```
-Escalate to the fallback below only if this command errors (non-zero exit status) — regardless of the specific reason (wrong interpreter name, missing lamindb, anything else). Under no other circumstance should you run any additional command before or instead of accepting this result:
-```bash
-uv run --with lamindb python -c "
-import lamindb as ln
-from pathlib import Path
-run = ln.Run.get(uid=Path('<dev-dir, if any>/.copilot/.lamindb_run_uid_copilot_${COPILOT_AGENT_SESSION_ID}').read_text().strip())
-ln.Artifact('output.csv', key='<meaningful/folder/path>/output.csv', description='<what it is>', run=run).save()
-# repeat for each direct file
-"
-```
+Replace `<matching-python-executable>` with the exact interpreter described above. If it cannot import LaminDB, stop and ask the user to repair that environment; do not attach through another environment.
+
+A zero exit status means the direct files were attached successfully, even if the command prints no explicit artifact confirmation. Do not search the filesystem for tracking state or query LaminDB merely to reconfirm success. If the command fails, handle its reported error directly.
 
 Then run [SKILL.md](../SKILL.md)'s Step 3 closing command (`lamin finish`) as its own tool call — it reads `$COPILOT_AGENT_SESSION_ID` from its own environment the same way Step 1 did. A later finish in the same Copilot conversation updates this Run's report and cumulative metrics. Don't stop after just writing/running the user's script.
