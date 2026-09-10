@@ -2,7 +2,7 @@
 
 See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers only what's specific to Copilot.
 
-When shared Step 1 starts from the base dev-dir and requires a new branch, use the first 8 alphanumeric characters of `$COPILOT_AGENT_SESSION_ID`. Combine it with an agent-chosen slug that describes the user's task, for example `favorite-protein-fasta-a1b2c3d4`; never print the session ID or use a generic or timestamp-only branch name.
+When shared Step 1 starts from the base dev-dir and requires a new branch, use the first 8 alphanumeric characters of `$COPILOT_AGENT_SESSION_ID`. Combine it with an agent-chosen slug that describes the user's task. Expand the ID directly inside the `lamin switch -c` branch argument, for example `lamin switch -c "favorite-protein-fasta-${COPILOT_AGENT_SESSION_ID:0:8}"`. Never run `echo`, `printenv`, `env`, Python, or any other command to inspect or print the session ID, and never use a generic or timestamp-only branch name.
 
 **Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — [SKILL.md](../SKILL.md)'s Step 1 first, including its worktree prerequisite and session-working-directory resolution, then Step 1 here, then the script/notebook command each time you run one, and Step 3 at the end. Don't skip a step because the task seems simple. If the user selected **Do not track**, stop here — there's nothing further to run, including Step 3. Otherwise, don't consider tracking finished until Step 3's `lamin finish` has actually run.
 
