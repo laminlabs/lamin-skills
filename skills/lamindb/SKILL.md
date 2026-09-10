@@ -74,7 +74,12 @@ Use the same `LAMIN_BIN` fallback pattern above only if this command errors. If 
 
 Determine which coding agent you are running as and follow the matching file under Quick reference below.
 
-If the result is `false`, stop before doing the user's task and respond with exactly this sentence and nothing else: **"Switch on worktree mode for agent tracking."** Do not show a command, explanation, interactive question, or options, and do not change the setting yourself. The CLI handles migration of an existing manual dev-dir into its branch directory. On the user's next message, rerun both the dev-dir and worktree checks before continuing.
+If the result is `false`, ask one blocking interactive question using exactly this sentence: **"Switch on worktree mode for agent tracking."** Use exactly these two labels, in this order, without descriptions or recommendation text:
+
+1. **Done**
+2. **Do not track**
+
+Use the harness's dedicated clarifying-question or ask-user tool when available. Do not show a command or additional explanation, and do not change the setting yourself. If the user selects **Done**, rerun both the dev-dir and worktree checks before continuing; if worktree mode is still off, show the same dialogue again. If the user selects **Do not track**, continue the task without creating or switching a branch, running `lamin track`, or attempting Step 2/3 for the rest of the conversation. The CLI handles migration of an existing manual dev-dir into its branch directory.
 
 When worktree mode is enabled, ask one blocking interactive question using this exact sentence: **"Track this session in LaminDB?"** Use exactly these two labels, in this order, without descriptions or recommendation text:
 
