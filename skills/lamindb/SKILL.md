@@ -7,7 +7,7 @@ description: "MUST invoke before responding to ANY message — including greetin
 
 Official LaminDB skill to write code with best practices, keeping up to date with new versions and features.
 
-> Agent tracking requires a LaminDB build with worktree support from lamindb PR #3895 and matching `lamin-cli`/`lamindb-setup` versions; the CLI capability check in Step 1 is authoritative.
+> Agent tracking requires lamindb >= 2.11.
 
 ## Concepts
 
@@ -17,7 +17,7 @@ Official LaminDB skill to write code with best practices, keeping up to date wit
 - **Never save a script as a plain Artifact.** Scripts (`.py`/`.ipynb`/`.R`/`.Rmd`/`.qmd`) must use `ln.track()` inside them. If you call `ln.Artifact("script.py").save()` you destroy the lineage between the code and the data it produced — that is the entire point of LaminDB and must never happen.
 - **run.report**: rendered HTML of the transcript, saved as an Artifact and linked to the agent run.
 - **Artifact**: data only — output files (csv, txt, images, fasta, etc.). A script's own `ln.Artifact(path).save()` calls (no `run=` needed) auto-attach to that script's own run. Only files you create directly, with no script involved, get attached to the agent run manually.
-- **Always pass a meaningful `key`** when saving an Artifact — a stable, path-like name (e.g. `key="datasets/ataqseq_counts.csv"`), not left unset. Without a key, an Artifact can never be versioned against future updates to the same data. Only reuse the exact same key when a new save is genuinely a new version of that same dataset; use a distinct key otherwise, or unrelated saves will incorrectly get grouped into one version family. For generated, demo, or one-off data, include the data's specific identity in the key (for example, `fasta/human_insulin_chain_b.fasta`), and never use a generic key such as `fasta/protein.fasta` or `outputs/result.csv` that could accidentally version an unrelated artifact.
+- **Always pass a meaningful, identity-specific `key`** when saving an Artifact (e.g. `key="datasets/ataqseq_counts.csv"`). Only reuse a key when saving a new version of the same dataset.
 - **Create artifacts from in-memory objects when possible**: Prefer `ln.Artifact.from_*()` over writing objects to disk and then calling `ln.Artifact(path).save()`. For example, use `ln.Artifact.from_anndata()` for `AnnData` and `ln.Artifact.from_dataframe()` for pandas `DataFrame`. **Do not use `df.to_csv(...)` (or similar) as an intermediate step if a matching `from_*` constructor exists**. Use path-based `ln.Artifact(path).save()` only when the output is genuinely file-native (e.g. image, FASTA, binary export, or a format without a `from_*` helper). If you're unsure whether a `from_*` helper exists for an object type, run `help(ln.Artifact)` to inspect supported constructors.
 - **When a script needs data that an earlier script in this workflow already produced, retrieve it from LaminDB — never read the local file path directly.** Use `ln.Artifact.get(key="...")` (the same key it was saved under) followed by `.load()`; this is what registers that artifact as this run's input and forms the lineage edge between the two scripts. Reading the file straight off disk produces the same result but leaves LaminDB with no record that the two scripts are connected, silently breaking the workflow's lineage graph.
 
@@ -50,7 +50,7 @@ When you actually **run** such a script or notebook, always set `LAMIN_INITIATED
 
 ## Step 1 — Start of session (before the user's actual task)
 
-First, resolve whether this instance has a configured development directory. In worktree mode this is the parent of all branch directories.
+First, resolve whether this instance has a configured development directory. In worktree mode this is analogous to a Git worktree root: it is the parent of one directory per LaminDB branch.
 ```bash
 lamin settings dev-dir get
 ```
