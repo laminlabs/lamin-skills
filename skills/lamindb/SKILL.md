@@ -79,9 +79,9 @@ If the result is `false`, ask one blocking interactive question using exactly th
 1. **Done**
 2. **Do not track**
 
-Use the harness's dedicated clarifying-question or ask-user tool when available. Do not show a command or additional explanation, and do not change the setting yourself. If the user selects **Done**, rerun both the dev-dir and worktree checks before continuing. If worktree mode is still off, immediately invoke the same interactive tool again with the exact same sentence and labels; emit no prose before it, do not explain that the setting is still off, and do not show a command. If the user selects **Do not track**, continue the task without creating or switching a branch, running `lamin track`, or attempting Step 2/3 for the rest of the conversation. The CLI handles migration of an existing manual dev-dir into its branch directory.
+Use the harness's dedicated clarifying-question or ask-user tool when available. Do not show a command or additional explanation, and do not change the setting yourself. If the user selects **Done**, rerun both the dev-dir and worktree checks before continuing. If worktree mode is still off, immediately invoke the same interactive tool again with the exact same sentence and labels; emit no prose before it, do not explain that the setting is still off, and do not show a command. Once the recheck confirms worktree mode is enabled, treat **Done** as consent to track and proceed directly to resolve the session working directory; do not ask for tracking confirmation again. If the user selects **Do not track**, continue the task without creating or switching a branch, running `lamin track`, or attempting Step 2/3 for the rest of the conversation. The CLI handles migration of an existing manual dev-dir into its branch directory.
 
-When worktree mode is enabled, ask one blocking interactive question using this exact sentence: **"Track this session in LaminDB?"** Use exactly these two labels, in this order, without descriptions or recommendation text:
+If worktree mode was already enabled when first checked, ask one blocking interactive question using this exact sentence: **"Track this session in LaminDB?"** Use exactly these two labels, in this order, without descriptions or recommendation text:
 
 1. **Track**
 2. **Do not track**
