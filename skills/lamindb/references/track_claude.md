@@ -2,7 +2,7 @@
 
 See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers only what's specific to Claude Code.
 
-When shared Step 1 requires a branch-name suffix, use the first 8 alphanumeric characters of `$CLAUDE_CODE_SESSION_ID`. Combine it with an agent-chosen slug that describes the user's task, for example `curate-cell-types-a1b2c3d4`; never use a generic `session-*` name or a timestamp-only suffix.
+When shared Step 1 starts from the base dev-dir and requires a new branch, use the complete `$CLAUDE_CODE_SESSION_ID`. Combine it with an agent-chosen slug that describes the user's task. Expand the ID directly inside the `lamin switch -c` branch argument, for example `lamin switch -c "curate-cell-types-${CLAUDE_CODE_SESSION_ID}"`. Never run `echo`, `printenv`, `env`, Python, or any other command to inspect or print the session ID, and never use a generic or timestamp-only branch name.
 
 ## Step 1 — Start of session
 
@@ -21,7 +21,7 @@ else
 fi
 ```
 
-This writes `.claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}` and `.claude/.lamindb_transcript_path_${CLAUDE_CODE_SESSION_ID}` under the session working directory, keyed by Claude Code's own session id. In worktree mode, this keeps each branch's tracking state inside its isolated branch-dir. Repeating this command from the same session working directory for a follow-up in the same Claude Code conversation resumes its existing Run; it does not create another Run.
+This writes `.claude/.lamindb_run_uid_${CLAUDE_CODE_SESSION_ID}` and `.claude/.lamindb_transcript_path_${CLAUDE_CODE_SESSION_ID}` under the session working directory, keyed by Claude Code's own session id. This keeps tracking state inside the active branch directory. Repeating this command from the same session working directory for a follow-up in the same Claude Code conversation resumes its existing Run; it does not create another Run.
 
 ## Running self-tracking scripts and notebooks
 
