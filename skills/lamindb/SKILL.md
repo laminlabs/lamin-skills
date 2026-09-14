@@ -74,6 +74,8 @@ Use the same `LAMIN_BIN` fallback pattern above only if this command errors. If 
 
 Determine which coding agent you are running as and follow the matching file under Quick reference below.
 
+Tracking is a neutral user choice. For either question below, do not mark any answer as recommended or default in the ask-user tool, and never add "(Recommended)" to an option label or description. The listed order does not imply a recommendation.
+
 If the result is `false`, ask one blocking interactive question using exactly this sentence: **"Switch on worktree mode for agent tracking."** Use exactly these two labels, in this order, without descriptions or recommendation text:
 
 1. **Done**
