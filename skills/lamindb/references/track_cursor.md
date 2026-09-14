@@ -2,7 +2,7 @@
 
 See [SKILL.md](../SKILL.md) for the shared steps. This reference covers only Cursor IDE Agent chats; it does not apply to Cursor's standalone CLI or cloud agents.
 
-Cursor does not expose its conversation ID to commands run by the IDE Agent. `lamin track cursor` creates its own marker and prints it once; `lamin finish` later resolves that marker from Cursor's local chat database, then reads the matching JSONL transcript. Do not generate, print, pass, or search for a session ID yourself.
+Cursor does not expose its conversation ID to commands run by the IDE Agent. `lamin finish` uses the Run UID printed by `lamin track cursor` to find the conversation in Cursor's local chat database, then reads the matching JSONL transcript. Do not generate, print, pass, or search for a session ID yourself.
 
 If shared Step 1 starts at the base dev-dir, choose a task-specific branch name with a unique agent-chosen suffix of at least eight hexadecimal characters, for example `favorite-protein-fasta-a1b2c3d4`. No extra shell command is needed for the suffix. Keep this branch dedicated to the current Cursor conversation; Cursor's tracking state is branch-local.
 
@@ -18,7 +18,7 @@ lamin track cursor --name "<one sentence describing this session's task>"
 
 Only if this command errors, use the same `LAMIN_BIN` fallback described in [SKILL.md](../SKILL.md), substituting `track cursor --name "<one sentence describing this session's task>"` for the command arguments.
 
-This writes the active Run UID to `.cursor/.lamindb_run_uid_cursor` inside the worktree. The marker printed by the CLI is internal bookkeeping; do not copy it into another command. A follow-up in the same Cursor conversation should repeat `lamin track cursor --name "<one sentence describing the follow-up>"` from the same worktree, which resumes the existing Run.
+This writes the active Run UID to `.cursor/.lamindb_run_uid_cursor` inside the worktree. A follow-up in the same Cursor conversation should repeat `lamin track cursor --name "<one sentence describing the follow-up>"` from the same worktree, which resumes the existing Run.
 
 ## Running self-tracking scripts and notebooks
 
