@@ -12,7 +12,7 @@ Official LaminDB skill to write code with best practices, keeping up to date wit
 ## Concepts
 
 - **Transform**: code, not data. Each coding agent/harness has its own fixed Transform for the whole project representing that harness's sessions (the "agent run") — internally keyed `__claudecode__` for Claude Code, `__copilot__` for Copilot, and `__cursor__` for Cursor. **These are internal database identifiers only, never CLI arguments or command names** — the actual commands are `lamin track claude`, `lamin track copilot`, and `lamin track cursor`; see your harness's reference file for the exact syntax. **Any script you write to accomplish the user's task (`.py`/`.ipynb`/`.R`/`.Rmd`/`.qmd`) is its own separate Transform, tracked automatically the moment it runs** — never save a script as a plain Artifact. Getting this backwards destroys the lineage from script to the data it produced, which is the entire point of LaminDB.
-- **Run**: an execution. Each harness conversation gets one Run of your harness's fixed Transform (the **agent run**) per LaminDB instance. If the user sends a follow-up after you already ran `lamin finish`, run `lamin track <agent>` again: it resumes that same agent Run using the harness session ID (Cursor resolves its conversation from the running CLI call in its local chat database) instead of creating a duplicate, and the next `lamin finish` replaces its report with the complete conversation. Every script you write self-tracks its *own* Run the instant it executes, linked back to the agent run via `initiated_by_run` — see "Self-tracking scripts" below. You never construct the script's Transform/Run by hand from outside.
+- **Run**: an execution. Each harness conversation gets one Run of your harness's fixed Transform (the **agent run**) per LaminDB instance. If the user sends a follow-up after you already ran `lamin finish`, run `lamin track <agent>` again: it resumes that same agent Run using the harness session ID (Cursor uses its generated session marker to resolve the conversation in its local chat database) instead of creating a duplicate, and the next `lamin finish` replaces its report with the complete conversation. Every script you write self-tracks its *own* Run the instant it executes, linked back to the agent run via `initiated_by_run` — see "Self-tracking scripts" below. You never construct the script's Transform/Run by hand from outside.
 - **Two distinct link fields — do not conflate them**: `Run.initiated_by_run` (on the *Run* model) says "this execution was triggered by that other run" — it only exists once a script actually executes, and renders in its own "This run initiated" panel in the UI, not as an output. `Transform.run` (on the *Transform* model, separate field) says "this piece of code was authored/produced during that run" — it's what makes a script show up in the agent run's **Output** column (alongside artifacts), the way a plain output file does. `ln.track()` never sets `Transform.run` on its own — `lamin finish` stamps it explicitly at session close, so a script counts as a session output even if it's the *only* thing produced.
 - **Never save a script as a plain Artifact.** Scripts (`.py`/`.ipynb`/`.R`/`.Rmd`/`.qmd`) must use `ln.track()` inside them. If you call `ln.Artifact("script.py").save()` you destroy the lineage between the code and the data it produced — that is the entire point of LaminDB and must never happen.
 - **run.report**: rendered HTML of the transcript, saved as an Artifact and linked to the agent run.
@@ -114,7 +114,7 @@ Keep every prescribed command free of diagnostic shell noise. Required working-d
 
 - status headings or separators such as `echo "--- dev-dir ---"`;
 - manual exit-code output such as `echo "exit: $?"` or `echo "switch exit: $?"` — rely on the execution tool's reported exit status;
-- commands that inspect or print harness session IDs, including `echo`, `printenv`, `env`, or a Python command — expand the environment variable only inside the branch name or required state-file path;
+- commands that inspect or print harness session IDs, including `echo`, `printenv`, `env`, or a Python command — except for the single Cursor marker command prescribed in its reference file, expand the environment variable only inside the branch name or required state-file path;
 - convenience aliases such as `LAMIN=...` or `PYBIN=...` — invoke the required `lamin` or matching Python executable directly.
 
 Run `lamin track` and `lamin finish` as standalone substantive commands: do not place another diagnostic or task command before or after either one in the same tool call.
@@ -187,7 +187,7 @@ User confirmation is not required. Always do Step 3. **Run the commands below ex
 
 If you created output files directly (no script involved), attach them first — see your harness's reference file for the exact command to resolve your run and attach files to it.
 
-Then close the session — run this exact command from the immutable session working directory, as its own tool call:
+Then close the session from the immutable session working directory as its own tool call. Use the required environment prefix from the harness reference when one is prescribed; otherwise run:
 ```bash
 lamin finish
 ```

@@ -2,23 +2,29 @@
 
 See [SKILL.md](../SKILL.md) for the shared steps. This reference covers only Cursor IDE Agent chats; it does not apply to Cursor's standalone CLI or cloud agents.
 
-Cursor does not expose its conversation ID to commands run by the IDE Agent. The CLI identifies the current conversation from its own running terminal-tool row in Cursor's local chat database. Do not generate, print, pass, or search for a session ID yourself.
+Cursor does not expose its conversation ID to commands run by the IDE Agent. Generate one random marker per Cursor conversation and pass it to the CLI, which uses the marker to identify the conversation in Cursor's local chat database. Parallel conversations must use different markers.
 
-If shared Step 1 starts at the base dev-dir, choose a task-specific branch name with a unique agent-chosen suffix of at least eight hexadecimal characters, for example `favorite-protein-fasta-a1b2c3d4`. No extra shell command is needed for the suffix. Keep this branch dedicated to the current Cursor conversation; Cursor's tracking state is branch-local.
+If shared Step 1 starts at the base dev-dir, choose a task-specific branch name with a unique agent-chosen suffix of at least eight hexadecimal characters, for example `favorite-protein-fasta-a1b2c3d4`. Keep this branch dedicated to the current Cursor conversation.
 
 If the user chose **Do not track**, stop here. Otherwise complete [SKILL.md](../SKILL.md)'s Step 1, including its worktree prerequisite and session-working-directory resolution, before running the commands below. Do not write your own tracking logic.
 
 ## Step 1 — Start of session
 
-Run from the resolved session working directory as its own tool call. `--name` is mandatory:
+From the resolved session working directory, generate the marker as its own tool call using the matching Python executable:
 
 ```bash
-lamin track cursor --name "<one sentence describing this session's task>"
+<matching-python-executable> -c "import secrets; print('LAMIN_CURSOR_SESSION_ID=' + secrets.token_hex(16))"
 ```
 
-Only if this command errors, use the same `LAMIN_BIN` fallback described in [SKILL.md](../SKILL.md), substituting `track cursor --name "<one sentence describing this session's task>"` for the command arguments.
+Remember the complete value after `=` for this conversation. Do not ask the user to copy it, and do not generate another marker on follow-ups. Then run the tracking command as its own tool call. `--name` is mandatory:
 
-Remember the LaminDB Run UID printed by this command for the execution wrappers below. Do not ask the user to copy it or run another command to retrieve it. A follow-up in the same Cursor conversation should repeat `lamin track cursor --name "<one sentence describing the follow-up>"` from the same worktree, which resumes the existing Run.
+```bash
+LAMIN_CURSOR_SESSION_ID=<generated value> lamin track cursor --name "<one sentence describing this session's task>"
+```
+
+Substitute the exact generated value without angle brackets. Only if this command errors, use the same `LAMIN_BIN` fallback described in [SKILL.md](../SKILL.md), preserving the `LAMIN_CURSOR_SESSION_ID` prefix and substituting `track cursor --name "<one sentence describing this session's task>"` for the command arguments.
+
+Remember the LaminDB Run UID printed by this command for the execution wrappers below. Do not ask the user to copy it or run another command to retrieve it. A follow-up in the same Cursor conversation should repeat the prefixed tracking command with the same marker from the same worktree, which resumes the existing Run.
 
 ## Running self-tracking scripts and notebooks
 
@@ -42,4 +48,10 @@ ln.Artifact('output.csv', key='<meaningful/folder/path>/output.csv', description
 "
 ```
 
-Substitute the exact Run UID printed earlier; do not include angle brackets. Then run the shared closing command `lamin finish` as its own tool call. The CLI identifies this conversation from the running command in Cursor's local chat database and renders the report from the database through the closing call. A later finish after a follow-up updates the same Run's report.
+Substitute the exact Run UID printed earlier; do not include angle brackets. Then close the session as its own tool call using the same marker:
+
+```bash
+LAMIN_CURSOR_SESSION_ID=<generated value> lamin finish
+```
+
+Substitute the exact generated value without angle brackets. The CLI finds the corresponding conversation in Cursor's local chat database and renders its report. A later finish after a follow-up updates the same Run's report.
