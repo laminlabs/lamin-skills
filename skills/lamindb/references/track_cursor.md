@@ -10,13 +10,13 @@ If the user chose **Do not track**, stop here. Otherwise complete [SKILL.md](../
 
 ## Step 1 — Start of session
 
-Generate the marker from the resolved session working directory — the branch folder, never the base dev-dir. If Cursor moved the workspace into that folder, wait until you are in the branch folder before generating it. Do not generate another marker on follow-ups or after a worktree folder move; reuse the same value. Use the matching Python executable:
+Invent a 32-character lowercase hexadecimal marker yourself. Do not run Python, openssl, or any other program to create it, and do not import a library. Generate it from the resolved session working directory — the branch folder, never the base dev-dir. If Cursor moved the workspace into that folder, wait until you are in the branch folder before printing it. Print it once:
 
 ```bash
-<matching-python-executable> -c "import secrets; print('LAMIN_CURSOR_SESSION_ID=' + secrets.token_hex(16))"
+echo LAMIN_CURSOR_SESSION_ID=<32 lowercase hex characters>
 ```
 
-Remember the complete value after `=` for this conversation. Do not ask the user to copy it, and do not generate another marker on follow-ups. Then run the tracking command as its own tool call. `--name` is mandatory:
+Do not print or invent another marker on follow-ups or after a worktree folder move; reuse the same value. Remember the complete value after `=` for this conversation. Do not ask the user to copy it. Then run the tracking command as its own tool call. `--name` is mandatory:
 
 ```bash
 LAMIN_CURSOR_SESSION_ID=<generated value> lamin track cursor --name "<one sentence describing this session's task>"
