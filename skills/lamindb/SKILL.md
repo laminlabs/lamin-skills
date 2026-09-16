@@ -94,9 +94,16 @@ If the user selects **Do not track**, do not create or switch a branch, run `lam
 
 ### Resolve the session working directory after Track
 
-Compare the original working directory with the base dev-dir:
+Compare the original working directory with the base dev-dir. When a new branch is needed, choose a concise name in the form `<meaningful-task-slug>-<session-id-suffix>`. The slug must describe the user's actual task; never use a generic or timestamp-only name. Derive the suffix as specified in your harness reference (Cursor uses a unique agent-chosen suffix because it does not expose its session ID to shell commands); do not print it separately. Use only letters, digits, hyphens, or underscores, and never `/`.
 
-- **At the base dev-dir:** create a concise branch name in the form `<meaningful-task-slug>-<session-id-suffix>`. The slug must describe the user's actual task; never use a generic or timestamp-only name. Derive the suffix as specified in your harness reference (Cursor uses a unique agent-chosen suffix because it does not expose its session ID to shell commands); do not print it separately. Use only letters, digits, hyphens, or underscores, and never `/`. From the base dev-dir, run `lamin switch -c <branch-name>`, require success, and verify that `<base-dev-dir>/<branch-name>` exists. That branch directory becomes the session working directory.
+After the commands below, **`cd` into the branch folder** (or set the execution tool's working-directory to it). Do not invent extra `mkdir`/`ls`/`find` exploration: run only the commands listed. If `lamin switch` errors with a `lamin create branch … && mkdir … && cd …` recipe, run that printed recipe exactly.
+
+- **At the base dev-dir** (worktree on, no folder for this branch yet): from the base dev-dir run:
+  ```bash
+  lamin switch -c <branch-name>
+  cd <base-dev-dir>/<branch-name>
+  ```
+  `lamin switch -c` from the parent creates the branch and its folder. Then `cd`. That folder is the session working directory. Do not `mkdir` separately, and do not stay in the parent.
 - **Inside a child directory of the base dev-dir:** resolve the active branch root with the matching project interpreter:
   ```bash
   <matching-python-executable> -c "from lamindb_setup import settings; from lamindb_setup.core._settings_store import local_current_branch_file; root = settings.effective_dev_dir; assert local_current_branch_file(root).exists(), 'not a configured branch directory'; print(root)"

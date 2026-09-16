@@ -6,11 +6,11 @@ Cursor does not expose its conversation ID to commands run by the IDE Agent. Gen
 
 If shared Step 1 starts at the base dev-dir, choose a task-specific branch name with a unique agent-chosen suffix of at least eight hexadecimal characters, for example `favorite-protein-fasta-a1b2c3d4`. Keep this branch dedicated to the current Cursor conversation.
 
-If the user chose **Do not track**, stop here. Otherwise complete [SKILL.md](../SKILL.md)'s Step 1, including its worktree prerequisite and session-working-directory resolution, before running the commands below. Do not write your own tracking logic.
+If the user chose **Do not track**, stop here. Otherwise complete [SKILL.md](../SKILL.md)'s Step 1, including its worktree prerequisite and session-working-directory resolution, **including the `cd` into the branch folder**, before running the commands below. Do not write your own tracking logic.
 
 ## Step 1 — Start of session
 
-From the resolved session working directory, generate the marker as its own tool call using the matching Python executable:
+Generate the marker from the resolved session working directory — the branch folder, never the base dev-dir. If Cursor moved the workspace into that folder, wait until you are in the branch folder before generating it. Do not generate another marker on follow-ups or after a worktree folder move; reuse the same value. Use the matching Python executable:
 
 ```bash
 <matching-python-executable> -c "import secrets; print('LAMIN_CURSOR_SESSION_ID=' + secrets.token_hex(16))"
