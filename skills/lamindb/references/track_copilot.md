@@ -2,7 +2,9 @@
 
 See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers only what's specific to Copilot.
 
-When shared Step 1 starts from the base dev-dir and requires a new branch, use the complete `$COPILOT_AGENT_SESSION_ID`. Combine it with an agent-chosen slug that describes the user's task. Expand the ID directly inside the `lamin switch -c` branch argument, for example `lamin switch -c "favorite-protein-fasta-${COPILOT_AGENT_SESSION_ID}"`. Never run `echo`, `printenv`, `env`, Python, or any other command to inspect or print the session ID, and never use a generic or timestamp-only branch name.
+When shared Step 1 needs a new branch, use the complete `$COPILOT_AGENT_SESSION_ID`. Combine it with an agent-chosen slug that describes the user's task. Expand the ID directly inside the `lamin switch -c` branch argument, for example `lamin switch -c "favorite-protein-fasta-${COPILOT_AGENT_SESSION_ID}"`. Never run `echo`, `printenv`, `env`, Python, or any other command to inspect or print the session ID, and never use a generic or timestamp-only branch name.
+
+A Copilot session folder under `~/.copilot/repos/copilot-worktrees/` is not dev-dir and is not the session working directory. Do not create a Copilot or git worktree for LaminDB tracking, and do not set dev-dir to that folder. If the original working directory is outside dev-dir, still follow [SKILL.md](../SKILL.md)'s **Outside the base dev-dir** recipe: run `lamin switch -c` with working-directory set to dev-dir, then run every later command — including `lamin track copilot` — from `<dev-dir>/<branch-name>`.
 
 **Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — [SKILL.md](../SKILL.md)'s Step 1 first, including its worktree prerequisite and session-working-directory resolution, then Step 1 here, then the script/notebook command each time you run one, and Step 3 at the end. Don't skip a step because the task seems simple. If the user selected **Do not track**, stop here — there's nothing further to run, including Step 3. Otherwise, don't consider tracking finished until Step 3's `lamin finish` has actually run.
 
