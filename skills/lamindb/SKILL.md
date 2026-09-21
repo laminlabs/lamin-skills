@@ -50,7 +50,7 @@ When you actually **run** such a script or notebook, always set `LAMIN_INITIATED
 
 ## Step 1 — Start of session (before the user's actual task)
 
-First, resolve whether this instance has a configured development directory. In worktree mode this is analogous to a Git worktree root: it is the parent of one directory per LaminDB branch.
+First, resolve whether this instance has a configured development directory. In worktree mode this is an empty parent folder with one child directory per LaminDB branch. It is not a git worktree, and it is not the coding agent's own sandbox folder.
 ```bash
 lamin settings dev-dir get
 ```
@@ -81,7 +81,7 @@ If the result is `false`, ask one blocking interactive question using exactly th
 1. **Done**
 2. **Do not track**
 
-Use the harness's dedicated clarifying-question or ask-user tool when available. Do not show a command or additional explanation, and do not change the setting yourself. If the user selects **Done**, rerun both the dev-dir and worktree checks before continuing. If worktree mode is still off, immediately invoke the same interactive tool again with the exact same sentence and labels; emit no prose before it, do not explain that the setting is still off, and do not show a command. Once the recheck confirms worktree mode is enabled, treat **Done** as consent to track and proceed directly to resolve the session working directory; do not ask for tracking confirmation again. If the user selects **Do not track**, continue the task without creating or switching a branch, running `lamin track`, or attempting Step 2/3 for the rest of the conversation.
+Use the harness's dedicated clarifying-question or ask-user tool when available. Do not show a command or additional explanation, and do not change the setting yourself. If the user selects **Done**, rerun both the dev-dir and worktree checks before continuing. If worktree mode is still off, dev-dir is one path for the whole instance and worktree mode only enables when that folder contains no project files. Stop and tell the user dev-dir must be an empty parent folder. Show `lamin settings dev-dir set <empty-folder>` and wait. Do not choose a path, do not use the harness session folder, and do not run `lamin settings worktree set` yourself. On their next message, rerun both checks. If worktree mode is still off, immediately invoke the same interactive tool again with the exact same sentence and labels; emit no prose before it. Once the recheck confirms worktree mode is enabled, treat **Done** as consent to track and proceed directly to resolve the session working directory; do not ask for tracking confirmation again. If the user selects **Do not track**, continue the task without creating or switching a branch, running `lamin track`, or attempting Step 2/3 for the rest of the conversation.
 
 If worktree mode was already enabled when first checked, ask one blocking interactive question using this exact sentence: **"Track this session in LaminDB?"** Use exactly these two labels, in this order, without descriptions or recommendation text:
 
@@ -109,11 +109,12 @@ After the commands below, **`cd` into the branch folder** (or set the execution 
   <matching-python-executable> -c "from lamindb_setup import settings; from lamindb_setup.core._settings_store import local_current_branch_file; root = settings.effective_dev_dir; assert local_current_branch_file(root).exists(), 'not a configured branch directory'; print(root)"
   ```
   `<matching-python-executable>` means the Python executable from the exact environment that provides the `lamin` executable being used; for `/path/to/env/bin/lamin`, use `/path/to/env/bin/python`. The command must resolve to the existing branch directory containing the original working directory. Use that branch root as the session working directory and do not create or switch another branch.
-- **Outside the base dev-dir, or in an invalid child directory:** stop and explain that tracking must start from the dev-dir or a configured branch directory. Do not guess a branch or silently change directories.
+- **Outside the base dev-dir:** do not stop and do not treat the current folder as dev-dir. Follow the **At the base dev-dir** recipe: run `lamin switch -c <branch-name>` with the execution tool's working-directory set to the base dev-dir, then run every later command with working-directory set to `<base-dev-dir>/<branch-name>`. Do not create a git worktree, and do not set dev-dir to the harness session folder.
+- **Invalid child directory of the base dev-dir:** stop and explain that tracking must start from the dev-dir or a configured branch directory. Do not guess a branch or silently change directories.
 
 Never call `lamin settings worktree set` or `lamin settings set worktree` yourself. Worktree mode is a user-controlled prerequisite.
 
-The session working directory is immutable after it is resolved. `lamin switch` cannot change the parent agent process's working directory. Therefore, **run every later LaminDB command and every task command from the session working directory**, using the execution tool's working-directory option when available or an explicit `cd "<session-working-dir>" &&` prefix otherwise. This includes `lamin track`, lineage verification, scripts and notebooks, direct-output attachment, tests, and `lamin finish`. Never run task commands from the base dev-dir after selecting an isolated worktree branch.
+The session working directory is immutable after it is resolved. `lamin switch` cannot change the parent agent process's working directory. The harness session folder may stay outside dev-dir; that is fine. Therefore, **run every later LaminDB command and every task command from the session working directory**, using the execution tool's working-directory option when available or an explicit `cd "<session-working-dir>" &&` prefix otherwise. This includes `lamin track`, lineage verification, scripts and notebooks, direct-output attachment, tests, and `lamin finish`. Never run task commands from the base dev-dir after selecting an isolated worktree branch. Never set dev-dir to the harness session folder.
 
 ### Command hygiene
 
