@@ -9,7 +9,7 @@ metadata:
 
 Official LaminDB skill to write code with best practices, keeping up to date with new versions and features.
 
-Before Step 1, run `lamin --skill-version` from the same environment that provides `lamin` and compare the printed value with this file's `metadata.version`. If they differ, stop and tell the user this project skill is stale: delete `.agents/skills/lamindb` (and `.claude/skills/lamindb` if present), then run `uvx library-skills` (add `--claude` for Claude Code). Do not continue tracking on the old skill.
+Before Step 1, run `lamin --skill-version` from the same environment that provides `lamin` and compare the printed value with this file's `metadata.version`. If they differ, stop and tell the user this skill is stale: remove `.agents/skills/lamindb` (and `.claude/skills/lamindb` if present), then run `uvx library-skills` (add `--claude` for Claude Code). Do not continue tracking on the old skill.
 
 > Agent tracking requires lamindb >= 2.11.
 
