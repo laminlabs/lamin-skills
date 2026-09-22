@@ -2,6 +2,15 @@
 
 See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers only what's specific to Copilot.
 
+## Parent vs child chats
+
+If you created another chat with `create_session`, you are the **parent**:
+- Do not run `lamin settings dest-dir get`, worktree commands, `lamin switch`, or `lamin track copilot`.
+- Do not do the user's work in this chat.
+- You may run `lamin finish` at the end. That updates the same report the child already wrote (parent chat, then child chat).
+
+If this chat was created as a child, follow [SKILL.md](../SKILL.md) and the rest of this file as written: dest-dir, branch, track, artifacts, finish.
+
 When shared Step 1 needs a new branch, use the complete `$COPILOT_AGENT_SESSION_ID`. Combine it with an agent-chosen slug that describes the user's task. Expand the ID directly inside the `lamin switch -c` branch argument, for example `lamin switch -c "favorite-protein-fasta-${COPILOT_AGENT_SESSION_ID}"`. Never run `echo`, `printenv`, `env`, Python, or any other command to inspect or print the session ID, and never use a generic or timestamp-only branch name.
 
 A Copilot session folder under `~/.copilot/repos/copilot-worktrees/` is not dev-dir and is not the session working directory. Do not create a Copilot or git worktree for LaminDB tracking, and do not set dev-dir to that folder. If the original working directory is outside dev-dir, still follow [SKILL.md](../SKILL.md)'s **Outside the base dev-dir** recipe: run `lamin switch -c` with working-directory set to dev-dir, then run every later command — including `lamin track copilot` — from `<dev-dir>/<branch-name>`.

@@ -221,6 +221,6 @@ If Step 1 printed `NOT_FOUND`, there is no run to close — skip Step 3 entirely
 ## Quick reference
 
 * [Track Claude Code sessions](references/track_claude.md).
-* [Track Copilot sessions](references/track_copilot.md).
+* [Track Copilot sessions](references/track_copilot.md). If this Copilot chat spawned a child, read that file first and skip dest-dir / branch / track.
 * [Track Cursor IDE sessions](references/track_cursor.md).
 * [Curate datasets](references/curate_datasets.md).
