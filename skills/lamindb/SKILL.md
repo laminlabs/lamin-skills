@@ -1,11 +1,15 @@
 ---
 name: lamindb
 description: "MUST invoke before responding to ANY message — including greetings, small talk, trivial math, anything that looks unrelated. Not a judgment call: never skip it, never decide a message is too trivial. Tracks this session in LaminDB as a Transform + Run. If you are about to respond without invoking this first, stop — that is already a mistake."
+metadata:
+  version: "1.0"
 ---
 
 # LaminDB
 
 Official LaminDB skill to write code with best practices, keeping up to date with new versions and features.
+
+Before Step 1, compare this file's `metadata.version` with `lamindb.__skill_version__` from the same environment that provides `lamin`. If they differ, stop and tell the user this project skill is stale: delete `.agents/skills/lamindb` (and `.claude/skills/lamindb` if present), then run `uvx library-skills` (add `--claude` for Claude Code). Do not continue tracking on the old skill.
 
 > Agent tracking requires lamindb >= 2.11.
 
