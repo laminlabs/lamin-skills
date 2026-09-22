@@ -113,7 +113,7 @@ lamin switch -c <branch-name>
 ```
 Session working directory is dev-dir. Do not create or `cd` into `<dev-dir>/<branch-name>`. If the original working directory is dev-dir, stay there. If it is outside dev-dir, run every later command from dev-dir.
 
-When worktree is **true**, dev-dir is the parent. A `main/` folder there is allowed and does not make this the project root. After the commands below, **`cd` into the branch folder** (or set the execution tool's working-directory to it). Do not invent extra `mkdir`/`ls`/`find` exploration: run only the commands listed. If `lamin switch` errors with a `lamin create branch … && mkdir … && cd …` recipe, run that printed recipe exactly.
+When worktree is **true**, dev-dir is an empty parent. After the commands below, **`cd` into the branch folder** (or set the execution tool's working-directory to it). Do not invent extra `mkdir`/`ls`/`find` exploration: run only the commands listed. If `lamin switch` errors with a `lamin create branch … && mkdir … && cd …` recipe, run that printed recipe exactly.
 
 - **At the base dev-dir** (worktree on, no folder for this branch yet): from the base dev-dir run:
   ```bash
@@ -127,7 +127,6 @@ When worktree is **true**, dev-dir is the parent. A `main/` folder there is allo
   ```
   `<matching-python-executable>` means the Python executable from the exact environment that provides the `lamin` executable being used; for `/path/to/env/bin/lamin`, use `/path/to/env/bin/python`. The command must resolve to the existing branch directory containing the original working directory. Use that branch root as the session working directory and do not create or switch another branch.
 - **Outside the base dev-dir** (worktree on): do not stop and do not treat the current folder as dev-dir. Follow the **At the base dev-dir** recipe: run `lamin switch -c <branch-name>` with the execution tool's working-directory set to the base dev-dir, then run every later command with working-directory set to `<base-dev-dir>/<branch-name>`. Do not create a git worktree, and do not set dev-dir to the harness session folder. When worktree is off, ignore this bullet; the session working directory is dev-dir.
-- **`main/` or another child without a branch file** (worktree on): do not stop and do not treat that folder as the project. Follow the **At the base dev-dir** recipe.
 - **Invalid child directory of the base dev-dir** (worktree on): stop and explain that tracking must start from the dev-dir or a configured branch directory. Do not guess a branch or silently change directories.
 
 Never call `lamin settings worktree set` or `lamin settings set worktree` yourself. Leave the current worktree setting as-is.
