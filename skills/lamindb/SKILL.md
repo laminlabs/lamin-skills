@@ -54,7 +54,7 @@ When you actually **run** such a script or notebook, always set `LAMIN_INITIATED
 
 ## Step 1 — Start of session (before the user's actual task)
 
-First, resolve whether this instance has a configured development directory. In worktree mode this is an empty parent folder with one child directory per LaminDB branch. It is not a git worktree, and it is not the coding agent's own sandbox folder.
+First, resolve whether this instance has a configured development directory. In worktree mode this is an empty parent folder with one child directory per LaminDB branch. When worktree mode is off, this path is the project itself and may already contain files. It is not a git worktree, and it is not the coding agent's own sandbox folder.
 ```bash
 lamin settings dev-dir get
 ```
@@ -80,12 +80,17 @@ Determine which coding agent you are running as and follow the matching file und
 
 Tracking is a neutral user choice. For either question below, do not mark any answer as recommended or default in the ask-user tool, and never add "(Recommended)" to an option label or description. The listed order does not imply a recommendation.
 
-If the result is `false`, ask one blocking interactive question using exactly this sentence: **"Switch on worktree mode for agent tracking."** Use exactly these two labels, in this order, without descriptions or recommendation text:
+If the result is `false` and dev-dir is an empty parent and you are sure of that, ask one blocking interactive question using exactly this sentence: **"Switch on worktree mode for agent tracking."** Use exactly these two labels, in this order, without descriptions or recommendation text:
 
 1. **Done**
 2. **Do not track**
 
-Use the harness's dedicated clarifying-question or ask-user tool when available. Do not show a command or additional explanation, and do not change the setting yourself. If the user selects **Done**, rerun both the dev-dir and worktree checks before continuing. If worktree mode is still off, dev-dir is one path for the whole instance and worktree mode only enables when that folder contains no project files. Stop and tell the user dev-dir must be an empty parent folder. Show `lamin settings dev-dir set <empty-folder>` and wait. Do not choose a path, do not use the harness session folder, and do not run `lamin settings worktree set` yourself. On their next message, rerun both checks. If worktree mode is still off, immediately invoke the same interactive tool again with the exact same sentence and labels; emit no prose before it. Once the recheck confirms worktree mode is enabled, treat **Done** as consent to track and proceed directly to resolve the session working directory; do not ask for tracking confirmation again. If the user selects **Do not track**, continue the task without creating or switching a branch, running `lamin track`, or attempting Step 2/3 for the rest of the conversation.
+Use the harness's dedicated clarifying-question or ask-user tool when available. Do not show a command or additional explanation, and do not change the setting yourself. If the user selects **Done**, rerun both the dev-dir and worktree checks before continuing. Do not list dev-dir to decide this. If worktree mode is now enabled, treat **Done** as consent to track and proceed directly to resolve the session working directory; do not ask for tracking confirmation again. If worktree mode is still off and dev-dir is still an empty parent, immediately invoke the same interactive tool again with the exact same sentence and labels; emit no prose before it. Do not say dev-dir must be empty, and do not stop. If worktree mode is still off and dev-dir now has project files or you are not sure, do not re-ask **Done**; ask **"Track this session in LaminDB?"** with **Track** / **Do not track** as below. If the user selects **Do not track**, continue the task without creating or switching a branch, running `lamin track`, or attempting Step 2/3 for the rest of the conversation.
+
+If the result is `false` and dev-dir already contains project files, or you are not sure whether dev-dir is empty, do not ask to switch worktree on. Worktree off is valid in that case: dev-dir is the project. Do not require an empty parent folder, do not list dev-dir to decide, and do not stop tracking because worktree is `false`. Ask one blocking interactive question using this exact sentence: **"Track this session in LaminDB?"** Use exactly these two labels, in this order, without descriptions or recommendation text:
+
+1. **Track**
+2. **Do not track**
 
 If worktree mode was already enabled when first checked, ask one blocking interactive question using this exact sentence: **"Track this session in LaminDB?"** Use exactly these two labels, in this order, without descriptions or recommendation text:
 
@@ -100,7 +105,13 @@ If the user selects **Do not track**, do not create or switch a branch, run `lam
 
 Compare the original working directory with the base dev-dir. When a new branch is needed, choose a concise name in the form `<meaningful-task-slug>-<session-id-suffix>`. The slug must describe the user's actual task; never use a generic or timestamp-only name. Derive the suffix as specified in your harness reference (Cursor uses a unique agent-chosen suffix because it does not expose its session ID to shell commands); do not print it separately. Use only letters, digits, hyphens, or underscores, and never `/`.
 
-After the commands below, **`cd` into the branch folder** (or set the execution tool's working-directory to it). Do not invent extra `mkdir`/`ls`/`find` exploration: run only the commands listed. If `lamin switch` errors with a `lamin create branch … && mkdir … && cd …` recipe, run that printed recipe exactly.
+When worktree is **false**, dev-dir is the project. From dev-dir run:
+```bash
+lamin switch -c <branch-name>
+```
+Session working directory is dev-dir. Do not create or `cd` into `<dev-dir>/<branch-name>`. If the original working directory is dev-dir, stay there. If it is outside dev-dir, run every later command from dev-dir.
+
+When worktree is **true**, dev-dir is an empty parent. After the commands below, **`cd` into the branch folder** (or set the execution tool's working-directory to it). Do not invent extra `mkdir`/`ls`/`find` exploration: run only the commands listed. If `lamin switch` errors with a `lamin create branch … && mkdir … && cd …` recipe, run that printed recipe exactly.
 
 - **At the base dev-dir** (worktree on, no folder for this branch yet): from the base dev-dir run:
   ```bash
@@ -108,15 +119,15 @@ After the commands below, **`cd` into the branch folder** (or set the execution 
   cd <base-dev-dir>/<branch-name>
   ```
   `lamin switch -c` from the parent creates the branch and its folder. Then `cd`. That folder is the session working directory. Do not `mkdir` separately, and do not stay in the parent.
-- **Inside a child directory of the base dev-dir:** resolve the active branch root with the matching project interpreter:
+- **Inside a child directory of the base dev-dir** (worktree on): resolve the active branch root with the matching project interpreter:
   ```bash
   <matching-python-executable> -c "from lamindb_setup import settings; from lamindb_setup.core._settings_store import local_current_branch_file; root = settings.effective_dev_dir; assert local_current_branch_file(root).exists(), 'not a configured branch directory'; print(root)"
   ```
   `<matching-python-executable>` means the Python executable from the exact environment that provides the `lamin` executable being used; for `/path/to/env/bin/lamin`, use `/path/to/env/bin/python`. The command must resolve to the existing branch directory containing the original working directory. Use that branch root as the session working directory and do not create or switch another branch.
-- **Outside the base dev-dir:** do not stop and do not treat the current folder as dev-dir. Follow the **At the base dev-dir** recipe: run `lamin switch -c <branch-name>` with the execution tool's working-directory set to the base dev-dir, then run every later command with working-directory set to `<base-dev-dir>/<branch-name>`. Do not create a git worktree, and do not set dev-dir to the harness session folder.
-- **Invalid child directory of the base dev-dir:** stop and explain that tracking must start from the dev-dir or a configured branch directory. Do not guess a branch or silently change directories.
+- **Outside the base dev-dir** (worktree on): do not stop and do not treat the current folder as dev-dir. Follow the **At the base dev-dir** recipe: run `lamin switch -c <branch-name>` with the execution tool's working-directory set to the base dev-dir, then run every later command with working-directory set to `<base-dev-dir>/<branch-name>`. Do not create a git worktree, and do not set dev-dir to the harness session folder. When worktree is off, ignore this bullet; the session working directory is dev-dir.
+- **Invalid child directory of the base dev-dir** (worktree on): stop and explain that tracking must start from the dev-dir or a configured branch directory. Do not guess a branch or silently change directories.
 
-Never call `lamin settings worktree set` or `lamin settings set worktree` yourself. Worktree mode is a user-controlled prerequisite.
+Never call `lamin settings worktree set` or `lamin settings set worktree` yourself. Leave the current worktree setting as-is.
 
 The session working directory is immutable after it is resolved. `lamin switch` cannot change the parent agent process's working directory. The harness session folder may stay outside dev-dir; that is fine. Therefore, **run every later LaminDB command and every task command from the session working directory**, using the execution tool's working-directory option when available or an explicit `cd "<session-working-dir>" &&` prefix otherwise. This includes `lamin track`, lineage verification, scripts and notebooks, direct-output attachment, tests, and `lamin finish`. Never run task commands from the base dev-dir after selecting an isolated worktree branch. Never set dev-dir to the harness session folder.
 
@@ -221,6 +232,6 @@ If Step 1 printed `NOT_FOUND`, there is no run to close — skip Step 3 entirely
 ## Quick reference
 
 * [Track Claude Code sessions](references/track_claude.md).
-* [Track Copilot sessions](references/track_copilot.md). If this Copilot chat spawned a child, read that file first and skip dest-dir / branch / track.
+* [Track Copilot sessions](references/track_copilot.md). If this Copilot chat spawned a child, read that file first and skip dev-dir / branch / track.
 * [Track Cursor IDE sessions](references/track_cursor.md).
 * [Curate datasets](references/curate_datasets.md).
