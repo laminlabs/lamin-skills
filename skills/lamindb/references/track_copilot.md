@@ -2,11 +2,20 @@
 
 See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers only what's specific to Copilot.
 
+## Parent vs child chats
+
+If you created another chat with `create_session`, you are the **parent**:
+- Do not run `lamin settings dev-dir get`, worktree commands, `lamin switch`, or `lamin track copilot`.
+- Do not do the user's work in this chat.
+- You may run `lamin finish` at the end. That updates the same report the child already wrote (parent chat, then child chat).
+
+If this chat was created as a child, follow [SKILL.md](../SKILL.md) and the rest of this file as written: dev-dir, branch, track, artifacts, finish.
+
 When shared Step 1 needs a new branch, use the complete `$COPILOT_AGENT_SESSION_ID`. Combine it with an agent-chosen slug that describes the user's task. Expand the ID directly inside the `lamin switch -c` branch argument, for example `lamin switch -c "favorite-protein-fasta-${COPILOT_AGENT_SESSION_ID}"`. Never run `echo`, `printenv`, `env`, Python, or any other command to inspect or print the session ID, and never use a generic or timestamp-only branch name.
 
-A Copilot session folder under `~/.copilot/repos/copilot-worktrees/` is not dev-dir and is not the session working directory. Do not create a Copilot or git worktree for LaminDB tracking, and do not set dev-dir to that folder. If the original working directory is outside dev-dir, still follow [SKILL.md](../SKILL.md)'s **Outside the base dev-dir** recipe: run `lamin switch -c` with working-directory set to dev-dir, then run every later command — including `lamin track copilot` — from `<dev-dir>/<branch-name>`.
+A Copilot session folder under `~/.copilot/repos/copilot-worktrees/` is not dev-dir and is not the session working directory. Do not create a Copilot or git worktree for LaminDB tracking, and do not set dev-dir to that folder. If the original working directory is outside dev-dir, follow [SKILL.md](../SKILL.md)'s session-working-directory recipe. When worktree is off, that directory is dev-dir. When worktree is on, it is `<dev-dir>/<branch-name>`.
 
-**Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — [SKILL.md](../SKILL.md)'s Step 1 first, including its worktree prerequisite and session-working-directory resolution, then Step 1 here, then the script/notebook command each time you run one, and Step 3 at the end. Don't skip a step because the task seems simple. If the user selected **Do not track**, stop here — there's nothing further to run, including Step 3. Otherwise, don't consider tracking finished until Step 3's `lamin finish` has actually run.
+**Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — [SKILL.md](../SKILL.md)'s Step 1 first, including dev-dir, the worktree check, and session-working-directory resolution, then Step 1 here, then the script/notebook command each time you run one, and Step 3 at the end. Don't skip a step because the task seems simple. If the user selected **Do not track**, stop here — there's nothing further to run, including Step 3. Otherwise, don't consider tracking finished until Step 3's `lamin finish` has actually run.
 
 ## Step 1 — Start of session
 
