@@ -6,7 +6,7 @@ Cursor does not expose its conversation ID to commands run by the IDE Agent. Gen
 
 If shared Step 1 starts at the base dev-dir, choose a task-specific branch name with a unique agent-chosen suffix of at least eight hexadecimal characters, for example `favorite-protein-fasta-a1b2c3d4`. Keep this branch dedicated to the current Cursor conversation.
 
-If the user chose **Do not track**, stop here. Otherwise complete [SKILL.md](../SKILL.md)'s Step 1, including its worktree prerequisite and session-working-directory resolution, **including the `cd` into the branch folder**, before running the commands below. Do not write your own tracking logic.
+If the user chose **Do not track**, stop here. Otherwise complete [SKILL.md](../SKILL.md)'s Step 1, including its worktree prerequisite and session-working-directory resolution, before running the commands below. When worktree is on, that includes the `cd` into the branch folder. When worktree is off, stay in dev-dir; do not `cd` into a branch folder. Do not write your own tracking logic.
 
 ## Step 1 — Start of session
 

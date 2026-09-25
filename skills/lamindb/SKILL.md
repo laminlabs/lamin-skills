@@ -80,22 +80,24 @@ Determine which coding agent you are running as and follow the matching file und
 
 Tracking is a neutral user choice. For either question below, do not mark any answer as recommended or default in the ask-user tool, and never add "(Recommended)" to an option label or description. The listed order does not imply a recommendation.
 
-If the result is `false` and dev-dir is an empty parent and you are sure of that, ask one blocking interactive question using exactly this sentence: **"Switch on worktree mode for agent tracking."** Use exactly these two labels, in this order, without descriptions or recommendation text:
-
-1. **Done**
-2. **Do not track**
-
-Use the harness's dedicated clarifying-question or ask-user tool when available. Do not show a command or additional explanation, and do not change the setting yourself. If the user selects **Done**, rerun both the dev-dir and worktree checks before continuing. Do not list dev-dir to decide this. If worktree mode is now enabled, treat **Done** as consent to track and proceed directly to resolve the session working directory; do not ask for tracking confirmation again. If worktree mode is still off and dev-dir is still an empty parent, immediately invoke the same interactive tool again with the exact same sentence and labels; emit no prose before it. Do not say dev-dir must be empty, and do not stop. If worktree mode is still off and dev-dir now has project files or you are not sure, do not re-ask **Done**; ask **"Track this session in LaminDB?"** with **Track** / **Do not track** as below. If the user selects **Do not track**, continue the task without creating or switching a branch, running `lamin track`, or attempting Step 2/3 for the rest of the conversation.
-
-If the result is `false` and dev-dir already contains project files, or you are not sure whether dev-dir is empty, do not ask to switch worktree on. Worktree off is valid in that case: dev-dir is the project. Do not require an empty parent folder, do not list dev-dir to decide, and do not stop tracking because worktree is `false`. Ask one blocking interactive question using this exact sentence: **"Track this session in LaminDB?"** Use exactly these two labels, in this order, without descriptions or recommendation text:
-
-1. **Track**
-2. **Do not track**
+Decide whether dev-dir is empty from files you can already see in the workspace. Hidden folders such as `.lamin`, `.agents`, and `.cursor` do not count. Scripts, notes, data, and other visible project files do count. If you can already see those, dev-dir is not empty. If you cannot tell, treat dev-dir as not empty. Do not list dev-dir to decide.
 
 If worktree mode was already enabled when first checked, ask one blocking interactive question using this exact sentence: **"Track this session in LaminDB?"** Use exactly these two labels, in this order, without descriptions or recommendation text:
 
 1. **Track**
 2. **Do not track**
+
+If the result is `false` and dev-dir already contains project files, or you are not sure whether dev-dir is empty, do not ask to switch worktree on. Worktree off is valid in that case: dev-dir is the project. Do not require an empty parent folder, and do not stop tracking because worktree is `false`. Ask one blocking interactive question using this exact sentence: **"Track this session in LaminDB?"** Use exactly these two labels, in this order, without descriptions or recommendation text:
+
+1. **Track**
+2. **Do not track**
+
+If the result is `false` and dev-dir is an empty parent and you are sure of that, ask one blocking interactive question using exactly this sentence: **"Switch on worktree mode for agent tracking."** Use exactly these two labels, in this order, without descriptions or recommendation text:
+
+1. **Done**
+2. **Do not track**
+
+Use the harness's dedicated clarifying-question or ask-user tool when available. Do not show a command or additional explanation, and do not change the setting yourself. If the user selects **Done**, rerun both the dev-dir and worktree checks before continuing. Do not list dev-dir to decide this. If worktree mode is now enabled, treat **Done** as consent to track and proceed directly to resolve the session working directory; do not ask for tracking confirmation again. If worktree mode is still off and dev-dir is still an empty parent, immediately invoke the same interactive tool again with the exact same sentence and labels; emit no prose before it. Do not say dev-dir must be empty, and do not stop. If worktree mode is still off and dev-dir now has project files or you are not sure, do not re-ask **Done**; ask **"Track this session in LaminDB?"** with **Track** / **Do not track** as above. If the user selects **Do not track**, continue the task without creating or switching a branch, running `lamin track`, or attempting Step 2/3 for the rest of the conversation.
 
 **If your harness has a dedicated clarifying-question or ask-user tool, you must use it.** Only ask directly in response text if no such tool exists. Stop and wait for the user's actual selection; do not assume one or continue in the same turn. Show this dialogue once at the start and never repeat it on a normal follow-up.
 
