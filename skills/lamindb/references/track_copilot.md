@@ -5,7 +5,7 @@ See [SKILL.md](../SKILL.md) for concepts and the shared steps — this covers on
 ## Parent vs child chats
 
 If you created another chat with `create_session`, you are the **parent**:
-- Do not run `lamin settings dev-dir get`, worktree commands, `lamin switch`, or `lamin track copilot`.
+- Do not run `lamin settings dev-dir get`, `lamin settings dev-dir find`, `lamin switch`, or `lamin track copilot`.
 - Do not do the user's work in this chat.
 - You may run `lamin finish` at the end. That updates the same report the child already wrote (parent chat, then child chat).
 
@@ -13,9 +13,9 @@ If this chat was created as a child, follow [SKILL.md](../SKILL.md) and the rest
 
 When shared Step 1 needs a new branch, use the complete `$COPILOT_AGENT_SESSION_ID`. Combine it with an agent-chosen slug that describes the user's task. Expand the ID directly inside the `lamin switch -c` branch argument, for example `lamin switch -c "favorite-protein-fasta-${COPILOT_AGENT_SESSION_ID}"`. Never run `echo`, `printenv`, `env`, Python, or any other command to inspect or print the session ID, and never use a generic or timestamp-only branch name.
 
-A Copilot session folder under `~/.copilot/repos/copilot-worktrees/` is not dev-dir and is not the session working directory. Do not create a Copilot or git worktree for LaminDB tracking, and do not set dev-dir to that folder. If the original working directory is outside dev-dir, follow [SKILL.md](../SKILL.md)'s session-working-directory recipe. When worktree is off, that directory is dev-dir. When worktree is on, it is `<dev-dir>/<branch-name>`.
+A Copilot session folder under `~/.copilot/repos/copilot-worktrees/` is not a dev-dir and is not the session working directory. Do not set dev-dir to that folder. The session working directory is the one resolved in [SKILL.md](../SKILL.md).
 
-**Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — [SKILL.md](../SKILL.md)'s Step 1 first, including dev-dir, the worktree check, and session-working-directory resolution, then Step 1 here, then the script/notebook command each time you run one, and Step 3 at the end. Don't skip a step because the task seems simple. If the user selected **Do not track**, stop here — there's nothing further to run, including Step 3. Otherwise, don't consider tracking finished until Step 3's `lamin finish` has actually run.
+**Do not write your own tracking logic.** Run every command below exactly as shown, as its own tool call, in order — [SKILL.md](../SKILL.md)'s Step 1 first, including session-working-directory resolution, then Step 1 here, then the script/notebook command each time you run one, and Step 3 at the end. Don't skip a step because the task seems simple. If the user selected **Do not track**, stop here — there's nothing further to run, including Step 3. Otherwise, don't consider tracking finished until Step 3's `lamin finish` has actually run.
 
 ## Step 1 — Start of session
 
@@ -34,7 +34,7 @@ else
 fi
 ```
 
-This reads Copilot's own `$COPILOT_AGENT_SESSION_ID` and writes `.copilot/.lamindb_run_uid_copilot_${COPILOT_AGENT_SESSION_ID}` under the session working directory. This keeps tracking state inside the active branch directory. Repeating this command from the same session working directory for a follow-up in the same Copilot conversation resumes its existing Run; it does not create another Run.
+This reads Copilot's own `$COPILOT_AGENT_SESSION_ID` and writes `.copilot/.lamindb_run_uid_copilot_${COPILOT_AGENT_SESSION_ID}` under the session working directory. This keeps tracking state inside that directory. Repeating this command from the same session working directory for a follow-up in the same Copilot conversation resumes its existing Run; it does not create another Run.
 
 You don't need to remember anything from this command's output — every later command below reads `$COPILOT_AGENT_SESSION_ID` from its own environment directly, the same way this one did.
 
