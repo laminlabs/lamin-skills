@@ -4,19 +4,19 @@ See [SKILL.md](../SKILL.md) for the shared steps. This reference covers only Cur
 
 Cursor does not expose its conversation ID to commands run by the IDE Agent. Generate one random marker per Cursor conversation and pass it to the CLI, which uses the marker to identify the conversation in Cursor's local chat database. Parallel conversations must use different markers.
 
-If shared Step 1 starts at the base dev-dir, choose a task-specific branch name with a unique agent-chosen suffix of at least eight hexadecimal characters, for example `favorite-protein-fasta-a1b2c3d4`. Keep this branch dedicated to the current Cursor conversation.
+When shared Step 1 chooses a new branch, use a task-specific name with a unique agent-chosen suffix of at least eight hexadecimal characters, for example `favorite-protein-fasta-a1b2c3d4`. Keep this branch dedicated to the current Cursor conversation.
 
-If the user chose **Do not track**, stop here. Otherwise complete [SKILL.md](../SKILL.md)'s Step 1, including its worktree prerequisite and session-working-directory resolution, before running the commands below. When worktree is on, that includes the `cd` into the branch folder. When worktree is off, stay in dev-dir; do not `cd` into a branch folder. Do not write your own tracking logic.
+If the user chose **Do not track**, stop here. Otherwise complete [SKILL.md](../SKILL.md)'s Step 1, including session-working-directory resolution, before running the commands below. Stay in that directory. Do not write your own tracking logic.
 
 ## Step 1 — Start of session
 
-Invent a 32-character lowercase hexadecimal marker yourself. Do not run Python, openssl, or any other program to create it, and do not import a library. Generate it from the resolved session working directory — the branch folder, never the base dev-dir. If Cursor moved the workspace into that folder, wait until you are in the branch folder before printing it. Print it once:
+Invent a 32-character lowercase hexadecimal marker yourself. Do not run Python, openssl, or any other program to create it, and do not import a library. Generate it once the session working directory is resolved. Print it once:
 
 ```bash
 echo LAMIN_CURSOR_SESSION_ID=<32 lowercase hex characters>
 ```
 
-Do not print or invent another marker on follow-ups or after a worktree folder move; reuse the same value. Remember the complete value after `=` for this conversation. Do not ask the user to copy it. Then run the tracking command as its own tool call. `--name` is mandatory:
+Do not print or invent another marker on follow-ups; reuse the same value. Remember the complete value after `=` for this conversation. Do not ask the user to copy it. Then run the tracking command as its own tool call. `--name` is mandatory:
 
 ```bash
 LAMIN_CURSOR_SESSION_ID=<generated value> lamin track cursor --name "<one sentence describing this session's task>"
@@ -24,7 +24,7 @@ LAMIN_CURSOR_SESSION_ID=<generated value> lamin track cursor --name "<one senten
 
 Substitute the exact generated value without angle brackets. Only if this command errors, use the same `LAMIN_BIN` fallback described in [SKILL.md](../SKILL.md), preserving the `LAMIN_CURSOR_SESSION_ID` prefix and substituting `track cursor --name "<one sentence describing this session's task>"` for the command arguments.
 
-Remember the LaminDB Run UID printed by this command for the execution wrappers below. Do not ask the user to copy it or run another command to retrieve it. A follow-up in the same Cursor conversation should repeat the prefixed tracking command with the same marker from the same worktree, which resumes the existing Run.
+Remember the LaminDB Run UID printed by this command for the execution wrappers below. Do not ask the user to copy it or run another command to retrieve it. A follow-up in the same Cursor conversation should repeat the prefixed tracking command with the same marker from the same session working directory, which resumes the existing Run.
 
 ## Running self-tracking scripts and notebooks
 
@@ -38,7 +38,7 @@ Substitute the exact Run UID printed earlier; do not include angle brackets. Do 
 
 ## Step 3 — Attaching direct output files
 
-For files created directly, with no script involved, attach them from the same worktree using the matching Python executable:
+For files created directly, with no script involved, attach them from the session working directory using the matching Python executable:
 
 ```bash
 <matching-python-executable> -c "
