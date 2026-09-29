@@ -75,7 +75,7 @@ Then resolve the session working directory. A development directory is one worki
 2. If it prints `None`, run `lamin settings dev-dir find` with the workspace as `PATH`. Do not pass `$HOME` and do not scan the machine.
 3. One result: that directory is the session working directory. Run later LaminDB commands there.
 4. Several: use the one that contains the files being edited. If none contains them, show the list and ask. Do not guess, and do not pick `$HOME`.
-5. None: ask the user to configure a dev-dir in the project directory. Do not create one unless they ask.
+5. None: ask the user to run `lamin connect <account/name> --here` in the project directory. `lamin init` also creates a dev-dir in the working directory. Do not run either command unless they ask.
 6. From that directory, choose a concise branch name in the form `<meaningful-task-slug>-<session-id-suffix>`. The slug must describe the user's actual task; never use a generic or timestamp-only name. Derive the suffix as specified in your harness reference (Cursor uses a unique agent-chosen suffix because it does not expose its session ID to shell commands); do not print it separately. Use only letters, digits, hyphens, or underscores, and never `/`. Then run:
 
 ```bash
